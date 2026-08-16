@@ -4,7 +4,7 @@ import Icon from '../components/ui/Icon';
 const FacebookConfiguration = () => {
   const [config, setConfig] = useState({
     appId: '1087455536591192',
-    appSecret: '••••••••••••••••••',
+    appSecret: '********************',
     accessToken: 'EAABsbxviN2cBA...',
     businessManagerId: '102837465012345',
     redirectUrl: 'https://app.company.com/facebook/callback',
@@ -38,20 +38,21 @@ const FacebookConfiguration = () => {
     <div className="content">
       <div className="page-header">
         <div>
+          <span className="page-kicker">Integration controls</span>
           <h1 className="page-title">Facebook Configuration</h1>
           <p className="page-subtitle">Configure your Facebook API integration</p>
         </div>
-        <button className="btn btn-outline" onClick={handleSave}>
-          {saved ? <span style={{ marginRight: '6px' }}>✓</span> : <Icon name="save" size={16} style={{ marginRight: '6px' }} />}
-          {saved ? 'Saved!' : 'Save Configuration'}
+        <button className="btn btn-outline" onClick={handleSave} type="button">
+          {saved ? <Icon name="check" size={16} style={{ marginRight: '6px' }} /> : <Icon name="save" size={16} style={{ marginRight: '6px' }} />}
+          {saved ? 'Saved' : 'Save Configuration'}
         </button>
       </div>
 
       <div className="card">
         <div className="connection-status connected">
-          <span className="status-dot status-online"></span>
+          <span className="status-dot status-online" />
           Connection Status: <strong>{connectionStatus === 'connected' ? 'Connected' : 'Disconnected'}</strong>
-          <button className="btn btn-sm btn-success" onClick={handleTestConnection} disabled={testing} style={{ marginLeft: 'auto' }}>
+          <button className="btn btn-sm btn-success" onClick={handleTestConnection} disabled={testing} style={{ marginLeft: 'auto' }} type="button">
             {testing ? 'Testing...' : <><Icon name="test" size={14} style={{ marginRight: '4px' }} /> Test Connection</>}
           </button>
         </div>

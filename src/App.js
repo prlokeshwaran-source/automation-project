@@ -16,7 +16,6 @@ import AuditLogs from './screens/AuditLogs';
 import SystemSettings from './screens/SystemSettings';
 import Profile from './screens/Profile';
 import Notifications from './screens/Notifications';
-import './index.css';
 
 const screenComponents = {
   dashboard: Dashboard,
@@ -33,6 +32,65 @@ const screenComponents = {
   settings: SystemSettings,
   profile: Profile,
   notifications: Notifications,
+};
+
+const screenMeta = {
+  dashboard: {
+    title: 'Dashboard',
+    subtitle: 'Live overview of admins, organizations, campaigns, and engagement.',
+  },
+  admin: {
+    title: 'Admin Management',
+    subtitle: 'Create, review, and activate admin accounts.',
+  },
+  organization: {
+    title: 'Organizations',
+    subtitle: 'Manage organizations, business details, and assigned admins.',
+  },
+  'fb-config': {
+    title: 'Facebook Configuration',
+    subtitle: 'Secure API credentials and integration settings.',
+  },
+  'fb-pages': {
+    title: 'Facebook Pages',
+    subtitle: 'Track connected pages, tokens, and sync status.',
+  },
+  campaigns: {
+    title: 'Campaigns',
+    subtitle: 'Launch, pause, and monitor campaign performance.',
+  },
+  automation: {
+    title: 'Automation',
+    subtitle: 'Build trigger-based workflows that save time.',
+  },
+  analytics: {
+    title: 'Analytics & Reports',
+    subtitle: 'Review reach, impressions, leads, and exports.',
+  },
+  roles: {
+    title: 'Roles & Permissions',
+    subtitle: 'Define access across modules and actions.',
+  },
+  documents: {
+    title: 'Documents & Verification',
+    subtitle: 'Approve and review organization documents.',
+  },
+  audit: {
+    title: 'Audit Logs',
+    subtitle: 'Inspect user actions and system events.',
+  },
+  notifications: {
+    title: 'Notifications',
+    subtitle: 'See unread tasks, alerts, and system updates.',
+  },
+  settings: {
+    title: 'System Settings',
+    subtitle: 'Tune the platform, security, and notifications.',
+  },
+  profile: {
+    title: 'Profile',
+    subtitle: 'Update your account details and password.',
+  },
 };
 
 const navToScreenMap = {
@@ -90,8 +148,6 @@ const App = () => {
       if (window.confirm('Are you sure you want to logout?')) {
         handleLogout();
       }
-    } else if (screen === 'notifications') {
-      setActiveScreen(screen);
     } else {
       setActiveScreen(screen);
     }
@@ -104,6 +160,8 @@ const App = () => {
     role: 'Super Admin',
   };
 
+  const activeMeta = screenMeta[activeScreen] || screenMeta.dashboard;
+
   if (!isAuthenticated) {
     return <Login onLogin={handleLogin} />;
   }
@@ -115,12 +173,21 @@ const App = () => {
       <Sidebar
         activeItem={activeScreen}
         onNavigate={handleNavigate}
+        open={sidebarOpen}
+        user={currentUser}
+      />
+      <button
+        type="button"
+        className={`sidebar-backdrop ${sidebarOpen ? 'visible' : ''}`}
+        onClick={() => setSidebarOpen(false)}
+        aria-label="Close navigation"
       />
       <div className="main-content">
         <Topbar
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           user={currentUser}
           onNavigate={handleNavigate}
+          screenMeta={activeMeta}
         />
         <div className="content-wrapper">
           <ScreenComponent />

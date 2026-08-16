@@ -16,7 +16,7 @@ const SystemSettings = () => {
     sessionTimeout: '30',
     passwordExpiry: '90',
     fbAppId: '1087455536591192',
-    fbAppSecret: '••••••••••••••••••',
+    fbAppSecret: '********************',
     fbAccessToken: 'EAABsbxviN2cBA...',
   });
   const [saved, setSaved] = useState(false);
@@ -58,12 +58,13 @@ const SystemSettings = () => {
     <div className="content">
       <div className="page-header">
         <div>
+          <span className="page-kicker">Platform controls</span>
           <h1 className="page-title">System Settings</h1>
           <p className="page-subtitle">Configure system-wide settings</p>
         </div>
-        <button className="btn btn-primary" onClick={handleSave}>
+        <button className="btn btn-primary" onClick={handleSave} type="button">
           <Icon name="save" size={16} style={{ marginRight: '6px' }} />
-          {saved ? 'Saved!' : 'Save Changes'}
+          {saved ? 'Saved' : 'Save Changes'}
         </button>
       </div>
 
@@ -72,24 +73,28 @@ const SystemSettings = () => {
           <button
             className={`tab ${activeTab === 'general' ? 'active' : ''}`}
             onClick={() => setActiveTab('general')}
+            type="button"
           >
             General
           </button>
           <button
             className={`tab ${activeTab === 'notifications' ? 'active' : ''}`}
             onClick={() => setActiveTab('notifications')}
+            type="button"
           >
             Notification Settings
           </button>
           <button
             className={`tab ${activeTab === 'security' ? 'active' : ''}`}
             onClick={() => setActiveTab('security')}
+            type="button"
           >
             Security Settings
           </button>
           <button
             className={`tab ${activeTab === 'facebook' ? 'active' : ''}`}
             onClick={() => setActiveTab('facebook')}
+            type="button"
           >
             Facebook API Settings
           </button>
@@ -257,7 +262,7 @@ const SystemSettings = () => {
                   onChange={handleChange}
                 />
               </div>
-              <button className="btn btn-outline btn-sm" style={{ marginTop: '8px' }}>
+              <button className="btn btn-outline btn-sm" style={{ marginTop: '8px' }} type="button">
                 <Icon name="test" size={14} style={{ marginRight: '6px' }} />
                 Test Facebook API Connection
               </button>

@@ -1,74 +1,75 @@
 import React from 'react';
 import Icon from './ui/Icon';
 
-const Topbar = ({ onToggleSidebar, user, onNavigate }) => {
+const Topbar = ({ onToggleSidebar, user, onNavigate, screenMeta }) => {
   const dropdownItems = [
     { key: 'profile', label: 'Profile', onClick: () => onNavigate('profile') },
     { key: 'settings', label: 'Settings', onClick: () => onNavigate('settings') },
     { key: 'logout', label: 'Logout', onClick: () => onNavigate('logout') },
   ];
 
+  const initials = user?.name
+    ? user.name
+        .split(' ')
+        .filter(Boolean)
+        .map((part) => part[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase()
+    : 'S';
+
   return (
-    <div className="topbar">
-      <button className="toggle-btn" onClick={onToggleSidebar}>
-        <Icon name="menu" size={24} />
-      </button>
+    <header className="topbar">
+      <div className="topbar-left">
+        <button className="toggle-btn" onClick={onToggleSidebar} type="button" aria-label="Toggle navigation">
+          <Icon name="menu" size={22} />
+        </button>
+
+        <div className="topbar-context">
+          <span className="topbar-kicker">Super Admin Workspace</span>
+          <div className="topbar-title-row">
+            <h1 className="topbar-title">{screenMeta?.title || 'Dashboard'}</h1>
+            <span className="topbar-live">
+              <Icon name="activity" size={12} />
+              Live
+            </span>
+          </div>
+          <p className="topbar-subtitle">
+            {screenMeta?.subtitle || 'Monitor users, operations, and performance from one place.'}
+          </p>
+        </div>
+      </div>
 
       <div className="topbar-right">
-        <div className="search-box">
+        <div className="search-box topbar-search">
           <Icon name="search" size={16} color="var(--color-text-muted)" />
-          <input type="text" placeholder="Search..." style={{ width: '200px' }} />
+          <input type="search" placeholder="Search modules, users, reports" />
         </div>
 
-        <div className="dropdown">
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              cursor: 'pointer',
-              padding: '4px 8px',
-              borderRadius: '8px',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'var(--color-input-bg)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-            }}
-          >
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-text-primary)' }}>
-                {user?.name || 'Super Admin'}
-              </div>
-              <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>
-                {user?.role || 'Super Admin'}
-              </div>
+        <button className="topbar-icon-btn" type="button" onClick={() => onNavigate('notifications')} aria-label="Notifications">
+          <Icon name="notifications" size={18} />
+          <span className="notification-badge">3</span>
+        </button>
+
+        <div className="dropdown topbar-dropdown">
+          <button className="profile-chip" type="button">
+            <div className="profile-copy">
+              <span className="profile-name">{user?.name || 'Super Admin'}</span>
+              <span className="profile-role">{user?.role || 'Super Admin'}</span>
             </div>
-            <div
-              className="avatar"
-              style={{
-                width: '36px',
-                height: '36px',
-              }}
-            >
-              {user?.name?.charAt(0) || 'S'}
-            </div>
-          </div>
-          <div className="dropdown-menu" style={{ minWidth: '160px' }}>
+            <div className="avatar topbar-avatar">{initials}</div>
+            <Icon name="chevronDown" size={14} className="profile-chevron" />
+          </button>
+          <div className="dropdown-menu topbar-menu" style={{ minWidth: '180px' }}>
             {dropdownItems.map((item) => (
-              <button
-                key={item.key}
-                className="dropdown-item"
-                onClick={item.onClick}
-              >
+              <button key={item.key} className="dropdown-item" onClick={item.onClick}>
                 {item.label}
               </button>
             ))}
           </div>
         </div>
       </div>
-    </div>
+    </header>
   );
 };
 

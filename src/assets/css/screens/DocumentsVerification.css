@@ -1,0 +1,146 @@
+/* ===== Documents & Verification ===== */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.page-header .page-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.page-header .page-subtitle {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+}
+
+.page-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.table-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding: 8px 0;
+}
+
+.table-actions .table-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-input-bg);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-md);
+  padding: 6px 12px;
+}
+
+.table-actions .table-search input {
+  border: none;
+  outline: none;
+  background: transparent;
+  width: 200px;
+  font-size: 13px;
+}
+
+.table-actions .table-search select.form-select {
+  width: 140px;
+  margin-left: 8px;
+}
+
+.document-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin-bottom: 12px;
+  transition: var(--transition);
+}
+
+.document-item:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.document-item .doc-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  background: var(--color-primary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.document-item .doc-info {
+  flex: 1;
+}
+
+.document-item .doc-type {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  margin-bottom: 2px;
+}
+
+.document-item .doc-number {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.document-item .doc-remarks {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
+.document-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.file-upload {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: var(--transition);
+  background: var(--color-input-bg);
+}
+
+.file-upload:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.file-upload .upload-icon {
+  font-size: 32px;
+  color: var(--color-text-muted);
+  margin-bottom: 8px;
+}
+
+.file-upload .upload-text {
+  font-size: 14px;
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.file-upload .upload-subtext {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+}

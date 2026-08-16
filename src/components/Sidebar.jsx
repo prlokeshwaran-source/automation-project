@@ -6,83 +6,89 @@ const sidebarItems = [
     id: 'dashboard',
     label: 'Dashboard',
     icon: 'dashboard',
-    section: 'Main',
+    section: 'Overview',
   },
   {
     id: 'admin',
     label: 'Admin Management',
     icon: 'admin',
-    section: 'Main',
+    section: 'Operations',
   },
   {
     id: 'organization',
     label: 'Organizations',
     icon: 'organization',
-    section: 'Main',
+    section: 'Operations',
   },
   {
     id: 'fb-config',
     label: 'Facebook Configuration',
     icon: 'facebook',
-    section: 'Main',
+    section: 'Operations',
   },
   {
     id: 'fb-pages',
     label: 'Facebook Pages',
     icon: 'pages',
-    section: 'Main',
+    section: 'Operations',
   },
   {
     id: 'campaigns',
     label: 'Campaigns',
     icon: 'campaign',
-    section: 'Main',
+    section: 'Operations',
   },
   {
     id: 'automation',
     label: 'Automation',
     icon: 'automation',
-    section: 'Main',
+    section: 'Operations',
   },
   {
     id: 'analytics',
     label: 'Analytics & Reports',
     icon: 'analytics',
-    section: 'Main',
+    section: 'Operations',
   },
   {
     id: 'roles',
     label: 'Roles & Permissions',
     icon: 'roles',
-    section: 'Administration',
+    section: 'Governance',
   },
   {
     id: 'documents',
     label: 'Documents & Verification',
     icon: 'documents',
-    section: 'Administration',
+    section: 'Governance',
   },
   {
     id: 'audit',
     label: 'Audit Logs',
     icon: 'audit',
-    section: 'Administration',
+    section: 'Governance',
+  },
+  {
+    id: 'notifications',
+    label: 'Notifications',
+    icon: 'notifications',
+    section: 'Account',
   },
   {
     id: 'settings',
     label: 'Settings',
     icon: 'settings',
-    section: 'Settings',
+    section: 'Account',
   },
   {
     id: 'profile',
     label: 'Profile',
     icon: 'profile',
-    section: 'Settings',
+    section: 'Account',
   },
 ];
 
-const Sidebar = ({ activeItem, onNavigate, collapsed = false }) => {
+const Sidebar = ({ activeItem, onNavigate, open = false, user }) => {
   const sections = {};
   sidebarItems.forEach((item) => {
     if (!sections[item.section]) {
@@ -92,13 +98,26 @@ const Sidebar = ({ activeItem, onNavigate, collapsed = false }) => {
   });
 
   return (
-    <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
+    <aside className={`sidebar ${open ? 'active' : ''}`}>
       <div className="sidebar-header">
-        <div className="logo">
-          <span className="logo-icon"><Icon name="business" size={24} /></span>
-          <span>Super Admin</span>
+        <div className="sidebar-brand">
+          <span className="sidebar-brand-mark">
+            <Icon name="business" size={20} />
+          </span>
+          <div className="sidebar-brand-copy">
+            <span className="sidebar-brand-eyebrow">Enterprise Suite</span>
+            <span className="sidebar-brand-title">Super Admin</span>
+          </div>
         </div>
+        <span className="sidebar-version">Live</span>
       </div>
+
+      <div className="sidebar-highlight">
+        <span className="sidebar-highlight-label">Workspace health</span>
+        <strong className="sidebar-highlight-value">98% connected</strong>
+        <span className="sidebar-highlight-note">3 approvals pending today</span>
+      </div>
+
       <nav className="sidebar-nav">
         {Object.entries(sections).map(([section, items]) => (
           <div className="nav-group" key={section}>
@@ -126,9 +145,16 @@ const Sidebar = ({ activeItem, onNavigate, collapsed = false }) => {
         </div>
       </nav>
       <div className="sidebar-footer">
-        <div style={{ padding: '12px 24px', fontSize: '12px', color: 'var(--color-sidebar-text)', opacity: 0.6 }}>
-          Super Admin Panel v1.0
+        <div className="sidebar-user-card">
+          <div className="avatar sidebar-avatar">
+            {user?.name?.charAt(0) || 'S'}
+          </div>
+          <div className="sidebar-user-copy">
+            <span className="sidebar-user-name">{user?.name || 'Super Admin'}</span>
+            <span className="sidebar-user-role">{user?.role || 'Super Admin'}</span>
+          </div>
         </div>
+        <div className="sidebar-footer-note">Super Admin Panel v2.0</div>
       </div>
     </aside>
   );
