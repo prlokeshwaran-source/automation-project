@@ -1366,6 +1366,19 @@ a {
   flex-wrap: wrap;
 }
 
+.topbar-screen-icon {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--color-primary) 0%, #06b6d4 100%);
+  box-shadow: 0 10px 18px rgba(91, 124, 250, 0.24);
+  flex-shrink: 0;
+}
+
 .topbar-title {
   font-family: Georgia, "Times New Roman", serif;
   font-size: 24px;

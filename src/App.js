@@ -36,58 +36,72 @@ const screenComponents = {
 
 const screenMeta = {
   dashboard: {
+    icon: 'dashboard',
     title: 'Dashboard',
     subtitle: 'Live overview of admins, organizations, campaigns, and engagement.',
   },
   admin: {
+    icon: 'admin',
     title: 'Admin Management',
     subtitle: 'Create, review, and activate admin accounts.',
   },
   organization: {
+    icon: 'organization',
     title: 'Organizations',
     subtitle: 'Manage organizations, business details, and assigned admins.',
   },
   'fb-config': {
+    icon: 'facebook',
     title: 'Facebook Configuration',
     subtitle: 'Secure API credentials and integration settings.',
   },
   'fb-pages': {
+    icon: 'pages',
     title: 'Facebook Pages',
     subtitle: 'Track connected pages, tokens, and sync status.',
   },
   campaigns: {
+    icon: 'campaign',
     title: 'Campaigns',
     subtitle: 'Launch, pause, and monitor campaign performance.',
   },
   automation: {
+    icon: 'automation',
     title: 'Automation',
     subtitle: 'Build trigger-based workflows that save time.',
   },
   analytics: {
+    icon: 'analytics',
     title: 'Analytics & Reports',
     subtitle: 'Review reach, impressions, leads, and exports.',
   },
   roles: {
+    icon: 'roles',
     title: 'Roles & Permissions',
     subtitle: 'Define access across modules and actions.',
   },
   documents: {
+    icon: 'documents',
     title: 'Documents & Verification',
     subtitle: 'Approve and review organization documents.',
   },
   audit: {
+    icon: 'audit',
     title: 'Audit Logs',
     subtitle: 'Inspect user actions and system events.',
   },
   notifications: {
+    icon: 'notifications',
     title: 'Notifications',
     subtitle: 'See unread tasks, alerts, and system updates.',
   },
   settings: {
+    icon: 'settings',
     title: 'System Settings',
     subtitle: 'Tune the platform, security, and notifications.',
   },
   profile: {
+    icon: 'profile',
     title: 'Profile',
     subtitle: 'Update your account details and password.',
   },

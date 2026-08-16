@@ -28,6 +28,9 @@ const Topbar = ({ onToggleSidebar, user, onNavigate, screenMeta }) => {
         <div className="topbar-context">
           <span className="topbar-kicker">Super Admin Workspace</span>
           <div className="topbar-title-row">
+            <span className="topbar-screen-icon" aria-hidden="true">
+              <Icon name={screenMeta?.icon || 'dashboard'} size={16} />
+            </span>
             <h1 className="topbar-title">{screenMeta?.title || 'Dashboard'}</h1>
             <span className="topbar-live">
               <Icon name="activity" size={12} />
