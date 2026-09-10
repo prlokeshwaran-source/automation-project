@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || ' https://automation-backend-tpc4.onrender.com/api/v1';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://automation-backend-tpc4.onrender.com/api/v1';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -25,6 +25,11 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Handle network errors
+    if (!error.response) {
+      return Promise.reject(new Error('Network error - please check your connection'));
+    }
+
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
@@ -34,6 +39,12 @@ api.interceptors.response.use(
         window.location.href = '/login';
       }
     }
+
+    // Handle null/undefined response data
+    if (error.response?.data === null || error.response?.data === undefined) {
+      return Promise.reject(new Error('Server returned empty response'));
+    }
+
     return Promise.reject(error);
   }
 );
