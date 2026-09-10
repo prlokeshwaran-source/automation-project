@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import Icon from '../components/ui/Icon';
-import { organizationService } from '../services/api';
+import { organizationService, userService } from '../services/api';
 
 const OrganizationManagement = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [orgs, setOrgs] = useState([]);
+  const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingAdmins, setLoadingAdmins] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -36,6 +38,25 @@ const OrganizationManagement = () => {
     fetchOrgs();
   }, []);
 
+  const fetchAdmins = async () => {
+    setLoadingAdmins(true);
+    try {
+      const response = await organizationService.getAvailableAdmins();
+      const adminsData = (response.data?.admins || []).map((admin) => ({
+        id: admin._id,
+        name: `${admin.firstName} ${admin.lastName}`,
+        email: admin.email,
+        role: admin.role,
+        organization: admin.organization?.name || 'No Organization',
+      }));
+      setAdmins(adminsData);
+    } catch (err) {
+      console.error('Failed to load admins', err);
+    } finally {
+      setLoadingAdmins(false);
+    }
+  };
+
   const [formData, setFormData] = useState({
     orgName: '',
     businessEmail: '',
@@ -50,7 +71,10 @@ const OrganizationManagement = () => {
   const businessTypes = ['free', 'basic', 'premium', 'enterprise'];
   const statuses = ['active', 'inactive', 'suspended', 'pending'];
 
-  const handleCreate = () => setShowCreateModal(true);
+  const handleCreate = () => {
+    fetchAdmins();
+    setShowCreateModal(true);
+  };
 
   const handleCloseModal = () => {
     setShowCreateModal(false);
@@ -64,6 +88,7 @@ const OrganizationManagement = () => {
       assignAdmin: '',
       status: 'active',
     });
+    setAdmins([]);
   };
 
   const handleSubmit = async (e) => {
@@ -77,7 +102,7 @@ const OrganizationManagement = () => {
         website: formData.website,
         address: formData.address,
         type: formData.businessType,
-        admin: formData.assignAdmin,
+        admin: formData.assignAdmin || undefined,
         status: formData.status,
       });
 
@@ -210,7 +235,11 @@ const OrganizationManagement = () => {
                   <td>{org.address}</td>
                   <td>{org.admin}</td>
                   <td>
-                    <span className={`badge ${org.status === 'active' ? 'badge-success' : org.status === 'inactive' ? 'badge-secondary' : org.status === 'suspended' ? 'badge-danger' : 'badge-warning'}`}>
+                    <span className={`badge ${
+                      org.status === 'active' ? 'badge-success' :
+                      org.status === 'inactive' ? 'badge-secondary' :
+                      org.status === 'suspended' ? 'badge-danger' : 'badge-warning'
+                    }`}>
                       {org.status}
                     </span>
                   </td>
@@ -326,17 +355,22 @@ const OrganizationManagement = () => {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="required">Assign Admin</label>
+                    <label>Assign Admin</label>
                     <select
                       name="assignAdmin"
                       className="form-select"
                       value={formData.assignAdmin}
                       onChange={handleChange}
-                      required
+                      disabled={loadingAdmins}
                     >
-                      <option value="">Select Admin</option>
-                      {/* Admins would be fetched from API */}
+                      <option value="">Select Admin (optional)</option>
+                      {admins.map((admin) => (
+                        <option key={admin.id} value={admin.id}>
+                          {admin.name} ({admin.email}) - {admin.role}
+                        </option>
+                      ))}
                     </select>
+                    {loadingAdmins && <small style={{ color: 'var(--color-text-secondary)' }}>Loading admins...</small>}
                   </div>
                   <div className="form-group">
                     <label className="required">Status</label>

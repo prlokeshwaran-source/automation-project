@@ -104,6 +104,9 @@ export const organizationService = {
 
   deleteOrganization: (id) =>
     api.delete(`/organizations/${id}`),
+
+  getAvailableAdmins: () =>
+    api.get('/organizations/available-admins'),
 };
 
 // Role Service

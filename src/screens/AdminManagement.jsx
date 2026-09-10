@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Icon from '../components/ui/Icon';
-import { userService } from '../services/api';
+import { userService, organizationService } from '../services/api';
 
 const AdminManagement = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -11,14 +11,15 @@ const AdminManagement = () => {
   const [organizations, setOrganizations] = useState([]);
 
   useEffect(() => {
-    const fetchAdmins = async () => {
+    const fetchData = async () => {
       try {
-        const response = await userService.getUsers({
+        // Fetch users
+        const usersRes = await userService.getUsers({
           select: 'firstName lastName email username phone role isActive organization createdAt',
           populate: ['organization'],
         });
 
-        const adminsData = (response.data?.data || []).map((u) => ({
+        const adminsData = (usersRes.data?.data || []).map((u) => ({
           id: u._id,
           name: `${u.firstName} ${u.lastName}`,
           username: u.username,
@@ -26,15 +27,20 @@ const AdminManagement = () => {
           phone: u.phone || 'N/A',
           role: u.role,
           organization: u.organization?.name || 'No Organization',
+          organizationId: u.organization?._id || '',
           status: u.isActive ? 'Active' : 'Inactive',
           createdDate: new Date(u.createdAt).toISOString().split('T')[0],
         }));
 
         setAdmins(adminsData);
 
-        // Get unique organizations
-        const orgs = [...new Set(adminsData.map(a => a.organization))];
-        setOrganizations(orgs);
+        // Fetch organizations separately
+        const orgsRes = await organizationService.getOrganizations();
+        const orgsData = (orgsRes.data?.data || []).map((org) => ({
+          id: org._id,
+          name: org.name,
+        }));
+        setOrganizations(orgsData);
       } catch (err) {
         setError(err.response?.data?.error || 'Failed to load admins');
       } finally {
@@ -42,7 +48,7 @@ const AdminManagement = () => {
       }
     };
 
-    fetchAdmins();
+    fetchData();
   }, []);
 
   const [formData, setFormData] = useState({
@@ -379,7 +385,7 @@ const AdminManagement = () => {
                     >
                       <option value="">Select Organization</option>
                       {organizations.map((org) => (
-                        <option key={org} value={org}>{org}</option>
+                        <option key={org.id} value={org.id}>{org.name}</option>
                       ))}
                     </select>
                   </div>
