@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Icon from '../components/ui/Icon';
-import { userService, organizationService } from '../services/api';
+import { userService } from '../services/api';
 
 const AdminManagement = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
