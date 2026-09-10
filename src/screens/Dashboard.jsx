@@ -59,35 +59,35 @@ const Dashboard = () => {
   }, [user?.organization?._id]);
 
   const stats = [
-    { label: 'Total Admins', value: dashboardData.stats.totalUsers.toString(), color: 'blue', icon: 'admin', trend: '+12%' },
-    { label: 'Active Admins', value: dashboardData.stats.activeUsers.toString(), color: 'green', icon: 'admin', trend: '88%' },
-    { label: 'Total Organizations', value: dashboardData.stats.totalOrgs.toString(), color: 'purple', icon: 'organization', trend: '+18%' },
-    { label: 'Facebook Pages', value: dashboardData.stats.facebookPages.toString(), color: 'blue', icon: 'facebook', trend: 'Synced' },
-    { label: 'Active Campaigns', value: dashboardData.stats.activeCampaigns.toString(), color: 'orange', icon: 'campaign', trend: '+9%' },
-    { label: 'Total Leads', value: dashboardData.stats.totalLeads.toLocaleString(), color: 'green', icon: 'user', trend: '+2.3K' },
-    { label: 'Total Engagement', value: dashboardData.stats.totalEngagement.toLocaleString(), color: 'teal', icon: 'analytics', trend: '+24%' },
-    { label: 'Recent Activities', value: dashboardData.recentActivities.length.toString(), color: 'info', icon: 'clock', trend: 'Live' },
+    { label: 'Total Admins', value: (dashboardData.stats.totalUsers || 0).toString(), color: 'blue', icon: 'admin', trend: '+12%' },
+    { label: 'Active Admins', value: (dashboardData.stats.activeUsers || 0).toString(), color: 'green', icon: 'admin', trend: '88%' },
+    { label: 'Total Organizations', value: (dashboardData.stats.totalOrgs || 0).toString(), color: 'purple', icon: 'organization', trend: '+18%' },
+    { label: 'Facebook Pages', value: (dashboardData.stats.facebookPages || 0).toString(), color: 'blue', icon: 'facebook', trend: 'Synced' },
+    { label: 'Active Campaigns', value: (dashboardData.stats.activeCampaigns || 0).toString(), color: 'orange', icon: 'campaign', trend: '+9%' },
+    { label: 'Total Leads', value: (dashboardData.stats.totalLeads || 0).toLocaleString(), color: 'green', icon: 'user', trend: '+2.3K' },
+    { label: 'Total Engagement', value: (dashboardData.stats.totalEngagement || 0).toLocaleString(), color: 'teal', icon: 'analytics', trend: '+24%' },
+    { label: 'Recent Activities', value: (dashboardData.recentActivities || []).length.toString(), color: 'info', icon: 'clock', trend: 'Live' },
   ];
 
   const heroSignals = [
-    { label: 'Connected pages', value: dashboardData.stats.facebookPages.toString(), note: 'All tokens healthy' },
-    { label: 'Active campaigns', value: dashboardData.stats.activeCampaigns.toString(), note: '12 awaiting review' },
+    { label: 'Connected pages', value: (dashboardData.stats.facebookPages || 0).toString(), note: 'All tokens healthy' },
+    { label: 'Active campaigns', value: (dashboardData.stats.activeCampaigns || 0).toString(), note: '12 awaiting review' },
     { label: 'Unread alerts', value: '9', note: '3 need attention' },
   ];
 
   const operationalSignals = [
-    { label: 'Campaign health', value: dashboardData.operationalSignals.campaignHealth || 0, note: 'Stable delivery', color: 'blue' },
-    { label: 'Lead capture', value: dashboardData.operationalSignals.leadCapture || 0, note: 'Strong conversion trend', color: 'green' },
-    { label: 'Verification queue', value: dashboardData.operationalSignals.verificationQueue || 0, note: '4 items need review', color: 'orange' },
+    { label: 'Campaign health', value: dashboardData.operationalSignals?.campaignHealth ?? 0, note: 'Stable delivery', color: 'blue' },
+    { label: 'Lead capture', value: dashboardData.operationalSignals?.leadCapture ?? 0, note: 'Strong conversion trend', color: 'green' },
+    { label: 'Verification queue', value: dashboardData.operationalSignals?.verificationQueue ?? 0, note: '4 items need review', color: 'orange' },
   ];
 
-  const recentActivities = dashboardData.recentActivities.slice(0, 5).map((activity, idx) => ({
-    id: activity._id || idx,
-    user: user ? `${user.firstName} ${user.lastName}` : 'System',
-    action: activity.name ? `Created campaign: ${activity.name}` : activity.action,
+  const recentActivities = (dashboardData.recentActivities || []).slice(0, 5).map((activity, idx) => ({
+    id: activity?._id || idx,
+    user: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'System',
+    action: activity?.name ? `Created campaign: ${activity.name}` : activity?.action || 'Activity recorded',
     module: 'Campaigns',
-    time: new Date(activity.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    status: activity.status === 'active' ? 'success' : activity.status === 'paused' ? 'warning' : 'info',
+    time: activity?.createdAt ? new Date(activity.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now',
+    status: activity?.status === 'active' ? 'success' : activity?.status === 'paused' ? 'warning' : 'info',
   })) || [];
 
   if (loading) {
