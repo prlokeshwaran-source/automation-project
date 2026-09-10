@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import Icon from '../components/ui/Icon';
-import { authService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 const Profile = () => {

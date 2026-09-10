@@ -5,7 +5,6 @@ import { useAuth } from '../context/AuthContext';
 
 const AnalyticsReports = () => {
   const [dateRange, setDateRange] = useState('30d');
-  const [activeTab, setActiveTab] = useState('overview');
   const [analytics, setAnalytics] = useState({
     overviewStats: {},
     pagePerformance: [],

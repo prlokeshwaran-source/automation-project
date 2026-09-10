@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Icon from '../components/ui/Icon';
-import { userService } from '../services/api';
-import { useAuth } from '../context/AuthContext';
+import { userService, organizationService } from '../services/api';
 
 const AdminManagement = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -10,7 +9,6 @@ const AdminManagement = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [organizations, setOrganizations] = useState([]);
-  const { user } = useAuth();
 
   useEffect(() => {
     const fetchAdmins = async () => {
@@ -20,7 +18,7 @@ const AdminManagement = () => {
           populate: ['organization'],
         });
 
-        const adminsData = (response.data?.data || []).map((u, idx) => ({
+        const adminsData = (response.data?.data || []).map((u) => ({
           id: u._id,
           name: `${u.firstName} ${u.lastName}`,
           username: u.username,
@@ -62,9 +60,7 @@ const AdminManagement = () => {
   const roles = ['user', 'admin', 'organization_admin', 'super_admin'];
   const statuses = ['Active', 'Inactive'];
 
-  const handleCreate = () => {
-    setShowCreateModal(true);
-  };
+  const handleCreate = () => setShowCreateModal(true);
 
   const handleCloseModal = () => {
     setShowCreateModal(false);
@@ -105,7 +101,6 @@ const AdminManagement = () => {
         isActive: formData.status === 'Active',
       });
 
-      // Refresh the list
       const response = await userService.getUsers();
       const adminsData = (response.data?.data || []).map((u) => ({
         id: u._id,
@@ -272,10 +267,10 @@ const AdminManagement = () => {
             <span>Showing 1-{filteredAdmins.length} of {admins.length} results</span>
           </div>
           <div className="pagination-controls">
-            <button className="btn-icon" disabled>
+            <button className="btn-icon" style={{ width: '32px', height: '32px' }} disabled>
               <Icon name="chevronLeft" size={14} />
             </button>
-            <button className="btn-icon">
+            <button className="btn-icon" style={{ width: '32px', height: '32px' }}>
               <Icon name="chevronRight" size={14} />
             </button>
           </div>
@@ -397,6 +392,7 @@ const AdminManagement = () => {
                       onChange={handleChange}
                       required
                     >
+                      <option value="">Select Role</option>
                       {roles.map((role) => (
                         <option key={role} value={role}>{role}</option>
                       ))}
