@@ -1,65 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from '../components/ui/Icon';
+import { notificationService } from '../services/api';
 
 const Notifications = () => {
   const [filter, setFilter] = useState('all');
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: 'New campaign created',
-      type: 'Campaign',
-      message: 'Admin John Smith created a new campaign: "Summer Sale 2025"',
-      date: '2025-06-10',
-      time: '09:30',
-      read: false,
-    },
-    {
-      id: 2,
-      title: 'Document requires review',
-      type: 'Document',
-      message: 'New document "Tax Registration" uploaded by Beta Ltd needs verification',
-      date: '2025-06-10',
-      time: '08:45',
-      read: false,
-    },
-    {
-      id: 3,
-      title: 'Facebook page disconnected',
-      type: 'Facebook',
-      message: 'Page "Gamma Inc Marketing" has been disconnected',
-      date: '2025-06-09',
-      time: '14:22',
-      read: true,
-    },
-    {
-      id: 4,
-      title: 'Failed login attempt',
-      type: 'Security',
-      message: 'Unrecognized login attempt from IP 203.0.113.45',
-      date: '2025-06-08',
-      time: '23:17',
-      read: true,
-    },
-    {
-      id: 5,
-      title: 'Automation disabled',
-      type: 'Automation',
-      message: 'Automation "Post Engagement Booster" was disabled due to policy violation',
-      date: '2025-06-08',
-      time: '11:30',
-      read: true,
-    },
-    {
-      id: 6,
-      title: 'New organization registered',
-      type: 'Organization',
-      message: 'Epsilon LLC has been registered and is pending verification',
-      date: '2025-06-07',
-      time: '10:00',
-      read: true,
-    },
-  ]);
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const response = await notificationService.getNotifications();
+        const notifData = (response.data?.data || []).map((n) => ({
+          id: n._id,
+          title: n.title,
+          type: n.type,
+          message: n.message,
+          date: new Date(n.createdAt).toISOString().split('T')[0],
+          time: new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          read: n.isRead,
+        }));
+        setNotifications(notifData);
+      } catch (err) {
+        setError(err.message || 'Failed to load notifications');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNotifications();
+  }, []);
 
   const filteredNotifications = notifications.filter((notif) => {
     if (filter === 'all') return true;
@@ -70,60 +41,92 @@ const Notifications = () => {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const markAsRead = (id) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+  const markAsRead = async (id) => {
+    try {
+      await notificationService.markAsRead(id);
+      setNotifications(notifications.map((n) =>
+        n.id === id ? { ...n, read: true } : n
+      ));
+    } catch (err) {
+      console.error('Error marking notification as read:', err);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      for (const notif of notifications.filter(n => !n.read)) {
+        await notificationService.markAsRead(notif.id);
+      }
+      setNotifications(notifications.map((n) => ({ ...n, read: true })));
+    } catch (err) {
+      console.error('Error marking all as read:', err);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await notificationService.deleteNotification(id);
+      setNotifications(notifications.filter((n) => n.id !== id));
+    } catch (err) {
+      console.error('Error deleting notification:', err);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="content">
+        <div className="loading-state">
+          <Icon name="loading" size={48} />
+          <p>Loading notifications...</p>
+        </div>
+      </div>
     );
-  };
-
-  const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  };
-
-  const deleteNotification = (id) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
-  };
-
-  const getTypeColor = (type) => {
-    const colors = {
-      Campaign: 'blue',
-      Document: 'warning',
-      Facebook: 'info',
-      Security: 'danger',
-      Automation: 'purple',
-      Organization: 'green',
-    };
-    return colors[type] || 'secondary';
-  };
+  }
 
   return (
     <div className="content">
       <div className="page-header">
         <div>
           <h1 className="page-title">Notifications</h1>
-          <p className="page-subtitle">{unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}</p>
+          <p className="page-subtitle">See unread tasks, alerts, and system updates.</p>
         </div>
         <div className="page-actions">
-          <button className="btn btn-outline btn-sm" onClick={markAllAsRead} style={{ marginRight: '8px' }}>
-            <Icon name="check" size={14} style={{ marginRight: '4px' }} />
+          <button className="btn btn-outline" onClick={markAllAsRead} disabled={unreadCount === 0}>
             Mark All as Read
           </button>
-          <select className="form-select" value={filter} onChange={(e) => setFilter(e.target.value)} style={{ width: '140px' }}>
-            <option value="all">All</option>
-            <option value="unread">Unread</option>
-            <option value="read">Read</option>
-          </select>
         </div>
       </div>
 
-      <div className="card" style={{ padding: '0' }}>
-        <div className="table-container" style={{ border: 'none', boxShadow: 'none' }}>
-          <table className="admin-table" style={{ marginBottom: '0' }}>
+      <div className="card">
+        <div className="table-actions">
+          <div className="filter-tabs">
+            <button
+              className={`filter-tab ${filter === 'all' ? 'active' : ''}`}
+              onClick={() => setFilter('all')}
+            >
+              All
+            </button>
+            <button
+              className={`filter-tab ${filter === 'unread' ? 'active' : ''}`}
+              onClick={() => setFilter('unread')}
+            >
+              Unread ({unreadCount})
+            </button>
+            <button
+              className={`filter-tab ${filter === 'read' ? 'active' : ''}`}
+              onClick={() => setFilter('read')}
+            >
+              Read
+            </button>
+          </div>
+        </div>
+
+        <div className="table-container">
+          <table className="admin-table">
             <thead>
               <tr>
-                <th style={{ width: '36px' }}></th>
-                <th>Notification Title</th>
-                <th>Notification Type</th>
+                <th>Title</th>
+                <th>Type</th>
                 <th>Message</th>
                 <th>Date</th>
                 <th>Time</th>
@@ -133,32 +136,33 @@ const Notifications = () => {
             </thead>
             <tbody>
               {filteredNotifications.map((notif) => (
-                <tr key={notif.id} style={{ opacity: notif.read ? 0.7 : 1, backgroundColor: notif.read ? 'transparent' : 'var(--color-primary-light)' }}>
-                  <td style={{ textAlign: 'center' }}>
-                    <span className="status-dot" style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: notif.read ? 'var(--color-text-muted)' : 'var(--color-primary)' }}></span>
-                  </td>
+                <tr key={notif.id}>
                   <td><strong>{notif.title}</strong></td>
-                  <td>
-                    <span className={`badge badge-${getTypeColor(notif.type)}`}>{notif.type}</span>
-                  </td>
-                  <td style={{ maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {notif.message}
-                  </td>
+                  <td>{notif.type}</td>
+                  <td>{notif.message}</td>
                   <td>{notif.date}</td>
                   <td>{notif.time}</td>
                   <td>
-                    <span className={`badge ${notif.read ? 'badge-secondary' : 'badge-info'}`}>
+                    <span className={`badge ${notif.read ? 'badge-secondary' : 'badge-success'}`}>
                       {notif.read ? 'Read' : 'Unread'}
                     </span>
                   </td>
                   <td className="actions-cell">
                     {!notif.read && (
-                      <button className="action-btn" title="Mark as Read" onClick={() => markAsRead(notif.id)}>
-                        <Icon name="check" size={13} />
+                      <button
+                        className="action-btn"
+                        onClick={() => markAsRead(notif.id)}
+                        title="Mark as Read"
+                      >
+                        <Icon name="check" size={14} />
                       </button>
                     )}
-                    <button className="action-btn" title="Delete" onClick={() => deleteNotification(notif.id)}>
-                      <Icon name="delete" size={13} />
+                    <button
+                      className="action-btn"
+                      onClick={() => handleDelete(notif.id)}
+                      title="Delete"
+                    >
+                      <Icon name="delete" size={14} />
                     </button>
                   </td>
                 </tr>
@@ -167,11 +171,10 @@ const Notifications = () => {
           </table>
         </div>
 
-        {filteredNotifications.length === 0 && (
-          <div className="empty-state">
-            <div className="empty-icon"><Icon name="notifications" size={48} /></div>
-            <p className="empty-text">No notifications found</p>
-            <p className="empty-subtext">Try adjusting your filters</p>
+        {error && (
+          <div className="error-banner">
+            <Icon name="error" size={16} />
+            <span>{error}</span>
           </div>
         )}
       </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './screens/Login';
 import Dashboard from './screens/Dashboard';
 import AdminManagement from './screens/AdminManagement';
@@ -132,28 +133,14 @@ const navToScreenMap = {
   logout: 'logout',
 };
 
-const App = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+const AppContent = () => {
   const [activeScreen, setActiveScreen] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  useEffect(() => {
-    const saved = localStorage.getItem('isAuthenticated');
-    if (saved === 'true') {
-      setIsAuthenticated(true);
-    }
-  }, []);
-
-  const handleLogin = (credentials) => {
-    setIsAuthenticated(true);
-    setActiveScreen('dashboard');
-    localStorage.setItem('isAuthenticated', 'true');
-  };
+  const { user, isAuthenticated, loading, logout } = useAuth();
 
   const handleLogout = () => {
-    setIsAuthenticated(false);
+    logout();
     setActiveScreen('dashboard');
-    localStorage.removeItem('isAuthenticated');
   };
 
   const handleNavigate = (screenId) => {
@@ -169,15 +156,26 @@ const App = () => {
   };
 
   const currentUser = {
-    name: 'John Smith',
-    email: 'john.smith@company.com',
-    role: 'Super Admin',
+    name: user ? `${user.firstName} ${user.lastName}` : 'User',
+    email: user?.email || 'user@example.com',
+    role: user?.role || 'user',
   };
 
   const activeMeta = screenMeta[activeScreen] || screenMeta.dashboard;
 
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        <div className="loading-spinner">
+          <div className="spinner"></div>
+          <p>Loading CRM...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
-    return <Login onLogin={handleLogin} />;
+    return <Login />;
   }
 
   const ScreenComponent = screenComponents[activeScreen] || Dashboard;
@@ -208,6 +206,14 @@ const App = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+const App = () => {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 };
 

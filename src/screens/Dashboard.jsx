@@ -1,82 +1,116 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Icon from '../components/ui/Icon';
+import { analyticsService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const Dashboard = () => {
+  const [dashboardData, setDashboardData] = useState({
+    stats: {},
+    recentActivities: [],
+    operationalSignals: {},
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!user?.organization?._id) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await analyticsService.getDashboardStats(user.organization._id);
+        const data = response.data;
+
+        setDashboardData({
+          stats: {
+            totalUsers: data.stats?.totalUsers || 0,
+            activeUsers: data.stats?.activeUsers || 0,
+            totalOrgs: data.stats?.totalOrgs || 0,
+            facebookPages: data.stats?.facebookPages || 0,
+            activeCampaigns: data.stats?.activeCampaigns || 0,
+            totalLeads: data.stats?.totalLeads || 0,
+            totalEngagement: data.stats?.totalEngagement || 0,
+          },
+          recentActivities: data.recentActivities || [],
+          operationalSignals: {
+            campaignHealth: 0,
+            leadCapture: 0,
+            verificationQueue: 0,
+          },
+        });
+
+        // Fetch operational signals
+        const signalsRes = await analyticsService.getOperationalSignals(user.organization._id);
+        setDashboardData((prev) => ({
+          ...prev,
+          operationalSignals: signalsRes.data?.signals || {},
+        }));
+      } catch (err) {
+        setError(err.message || 'Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [user?.organization?._id]);
+
   const stats = [
-    { label: 'Total Admins', value: '1,248', color: 'blue', icon: 'admin', trend: '+12%' },
-    { label: 'Active Admins', value: '1,102', color: 'green', icon: 'admin', trend: '88%' },
-    { label: 'Total Organizations', value: '342', color: 'purple', icon: 'organization', trend: '+18%' },
-    { label: 'Facebook Pages', value: '1,824', color: 'blue', icon: 'facebook', trend: 'Synced' },
-    { label: 'Active Campaigns', value: '156', color: 'orange', icon: 'campaign', trend: '+9%' },
-    { label: 'Total Leads', value: '42,891', color: 'green', icon: 'user', trend: '+2.3K' },
-    { label: 'Total Engagement', value: '1.2M', color: 'teal', icon: 'analytics', trend: '+24%' },
-    { label: 'Recent Activities', value: '24', color: 'info', icon: 'clock', trend: 'Live' },
+    { label: 'Total Admins', value: dashboardData.stats.totalUsers.toString(), color: 'blue', icon: 'admin', trend: '+12%' },
+    { label: 'Active Admins', value: dashboardData.stats.activeUsers.toString(), color: 'green', icon: 'admin', trend: '88%' },
+    { label: 'Total Organizations', value: dashboardData.stats.totalOrgs.toString(), color: 'purple', icon: 'organization', trend: '+18%' },
+    { label: 'Facebook Pages', value: dashboardData.stats.facebookPages.toString(), color: 'blue', icon: 'facebook', trend: 'Synced' },
+    { label: 'Active Campaigns', value: dashboardData.stats.activeCampaigns.toString(), color: 'orange', icon: 'campaign', trend: '+9%' },
+    { label: 'Total Leads', value: dashboardData.stats.totalLeads.toLocaleString(), color: 'green', icon: 'user', trend: '+2.3K' },
+    { label: 'Total Engagement', value: dashboardData.stats.totalEngagement.toLocaleString(), color: 'teal', icon: 'analytics', trend: '+24%' },
+    { label: 'Recent Activities', value: dashboardData.recentActivities.length.toString(), color: 'info', icon: 'clock', trend: 'Live' },
   ];
 
   const heroSignals = [
-    { label: 'Connected pages', value: '1,824', note: 'All tokens healthy' },
-    { label: 'Active campaigns', value: '156', note: '12 awaiting review' },
+    { label: 'Connected pages', value: dashboardData.stats.facebookPages.toString(), note: 'All tokens healthy' },
+    { label: 'Active campaigns', value: dashboardData.stats.activeCampaigns.toString(), note: '12 awaiting review' },
     { label: 'Unread alerts', value: '9', note: '3 need attention' },
   ];
 
   const operationalSignals = [
-    { label: 'Campaign health', value: 84, note: 'Stable delivery', color: 'blue' },
-    { label: 'Lead capture', value: 72, note: 'Strong conversion trend', color: 'green' },
-    { label: 'Verification queue', value: 53, note: '4 items need review', color: 'orange' },
+    { label: 'Campaign health', value: dashboardData.operationalSignals.campaignHealth || 0, note: 'Stable delivery', color: 'blue' },
+    { label: 'Lead capture', value: dashboardData.operationalSignals.leadCapture || 0, note: 'Strong conversion trend', color: 'green' },
+    { label: 'Verification queue', value: dashboardData.operationalSignals.verificationQueue || 0, note: '4 items need review', color: 'orange' },
   ];
 
-  const recentActivities = [
-    {
-      id: 1,
-      user: 'John Smith',
-      action: 'Created new campaign',
-      module: 'Campaigns',
-      time: '2 min ago',
-      status: 'success',
-    },
-    {
-      id: 2,
-      user: 'Sarah Johnson',
-      action: 'Updated Facebook configuration',
-      module: 'Facebook Config',
-      time: '15 min ago',
-      status: 'info',
-    },
-    {
-      id: 3,
-      user: 'Mike Wilson',
-      action: 'Added new organization',
-      module: 'Organizations',
-      time: '32 min ago',
-      status: 'success',
-    },
-    {
-      id: 4,
-      user: 'Emma Davis',
-      action: 'Deleted admin user',
-      module: 'Admin Management',
-      time: '1 hour ago',
-      status: 'warning',
-    },
-    {
-      id: 5,
-      user: 'Robert Brown',
-      action: 'Rejected document verification',
-      module: 'Documents',
-      time: '2 hours ago',
-      status: 'danger',
-    },
-  ];
+  const recentActivities = dashboardData.recentActivities.slice(0, 5).map((activity, idx) => ({
+    id: activity._id || idx,
+    user: user ? `${user.firstName} ${user.lastName}` : 'System',
+    action: activity.name ? `Created campaign: ${activity.name}` : activity.action,
+    module: 'Campaigns',
+    time: new Date(activity.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    status: activity.status === 'active' ? 'success' : activity.status === 'paused' ? 'warning' : 'info',
+  })) || [];
 
-  const chartData = [
-    { day: 'Mon', value: 3400 },
-    { day: 'Tue', value: 4200 },
-    { day: 'Wed', value: 3800 },
-    { day: 'Thu', value: 5100 },
-    { day: 'Fri', value: 4900 },
-    { day: 'Sat', value: 6200 },
-    { day: 'Sun', value: 5800 },
-  ];
+  if (loading) {
+    return (
+      <div className="content">
+        <div className="loading-state">
+          <Icon name="loading" size={48} />
+          <p>Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="content">
+        <div className="error-state">
+          <Icon name="error" size={48} />
+          <p>Error loading dashboard: {error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="content">
@@ -145,7 +179,7 @@ const Dashboard = () => {
               <span className="status-dot status-pending" />
               <div>
                 <strong>Verification queue needs review</strong>
-                <span>4 documents are waiting for approval.</span>
+                <span>{dashboardData.operationalSignals.verificationQueue || 4} documents are waiting for approval.</span>
               </div>
             </div>
             <div className="dashboard-hero-item">
@@ -251,19 +285,6 @@ const Dashboard = () => {
                       />
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="chart-container compact">
-              {chartData.map((item) => (
-                <div
-                  key={item.day}
-                  className="chart-column"
-                  style={{ height: `${(item.value / 7000) * 100}%` }}
-                >
-                  <span className="bar-value">{item.value.toLocaleString()}</span>
-                  <span className="chart-label">{item.day}</span>
                 </div>
               ))}
             </div>

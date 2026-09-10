@@ -1,83 +1,69 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from '../components/ui/Icon';
+import { campaignService, organizationService, facebookService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const CampaignManagement = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
+  const [campaigns, setCampaigns] = useState([]);
+  const [organizations, setOrganizations] = useState([]);
+  const [pages, setPages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { user } = useAuth();
 
-  const [campaigns, setCampaigns] = useState([
-    {
-      id: 1,
-      name: 'Summer Sale 2025',
-      organization: 'Acme Corp',
-      page: 'Acme Corp Official Page',
-      type: 'Engagement',
-      status: 'Active',
-      startDate: '2025-06-01',
-      endDate: '2025-06-30',
-      createdBy: 'John Smith',
-    },
-    {
-      id: 2,
-      name: 'New Product Launch',
-      organization: 'Beta Ltd',
-      page: 'Beta Ltd Community',
-      type: 'Lead Generation',
-      status: 'Active',
-      startDate: '2025-05-15',
-      endDate: '2025-07-15',
-      createdBy: 'Sarah Johnson',
-    },
-    {
-      id: 3,
-      name: 'Brand Awareness Q2',
-      organization: 'Gamma Inc',
-      page: 'Gamma Inc Marketing',
-      type: 'Brand Awareness',
-      status: 'Paused',
-      startDate: '2025-04-01',
-      endDate: '2025-05-31',
-      createdBy: 'Mike Wilson',
-    },
-    {
-      id: 4,
-      name: 'Holiday Campaign',
-      organization: 'Delta Corp',
-      page: 'Delta Corp Support',
-      type: 'Engagement',
-      status: 'Draft',
-      startDate: '2025-06-15',
-      endDate: '2025-07-15',
-      createdBy: 'Emma Davis',
-    },
-    {
-      id: 5,
-      name: 'Retargeting Q2',
-      organization: 'Acme Corp',
-      page: 'Acme Corp Official Page',
-      type: 'Retargeting',
-      status: 'Active',
-      startDate: '2025-05-20',
-      endDate: '2025-06-20',
-      createdBy: 'John Smith',
-    },
-  ]);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch campaigns
+        const campaignsRes = await campaignService.getCampaigns();
+        const campaignsData = (campaignsRes.data?.data || []).map((c) => ({
+          id: c._id,
+          name: c.name,
+          organization: c.organization?.name || 'No Organization',
+          page: c.pages?.map(p => p.pageName).join(', ') || 'No Pages',
+          type: c.type || 'standard',
+          status: c.status,
+          startDate: c.scheduling?.startDate ? new Date(c.scheduling.startDate).toISOString().split('T')[0] : 'N/A',
+          endDate: c.scheduling?.endDate ? new Date(c.scheduling.endDate).toISOString().split('T')[0] : 'N/A',
+          createdBy: c.createdBy ? `${c.createdBy.firstName} ${c.createdBy.lastName}` : 'Unknown',
+          approvalStatus: c.approvalStatus,
+        }));
+        setCampaigns(campaignsData);
+
+        // Fetch organizations for dropdown
+        const orgRes = await organizationService.getOrganizations();
+        setOrganizations((orgRes.data?.data || []).map(o => ({ id: o._id, name: o.name })));
+
+        // Fetch Facebook pages for dropdown
+        if (user?.organization?._id) {
+          const pagesRes = await facebookService.getPages(user.organization._id);
+          setPages(pagesRes.data?.pages || []);
+        }
+      } catch (err) {
+        setError(err.message || 'Failed to load data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user?.organization?._id]);
 
   const [formData, setFormData] = useState({
     campaignName: '',
     organization: '',
     page: '',
     campaignType: '',
-    status: 'Active',
+    status: 'draft',
     startDate: '',
     endDate: '',
   });
 
-  const campaignTypes = ['Engagement', 'Lead Generation', 'Brand Awareness', 'Retargeting', 'Conversions'];
-  const organizations = ['Acme Corp', 'Beta Ltd', 'Gamma Inc', 'Delta Corp', 'Epsilon LLC'];
-  const pages = ['Acme Corp Official Page', 'Beta Ltd Community', 'Gamma Inc Marketing', 'Delta Corp Support', 'Epsilon LLC Store'];
-  const statuses = ['Active', 'Paused', 'Draft', 'Completed'];
+  const campaignTypes = ['standard', 'automated', 'scheduled'];
+  const statuses = ['draft', 'active', 'paused', 'completed', 'archived'];
 
   const handleCreate = () => setShowCreateModal(true);
 
@@ -88,28 +74,49 @@ const CampaignManagement = () => {
       organization: '',
       page: '',
       campaignType: '',
-      status: 'Active',
+      status: 'draft',
       startDate: '',
       endDate: '',
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const newCampaign = {
-      id: campaigns.length + 1,
-      name: formData.campaignName,
-      organization: formData.organization,
-      page: formData.page,
-      type: formData.campaignType,
-      status: formData.status,
-      startDate: formData.startDate,
-      endDate: formData.endDate,
-      createdBy: 'Current User',
-    };
-    setCampaigns([...campaigns, newCampaign]);
-    handleCloseModal();
-    alert('Campaign created successfully!');
+
+    try {
+      await campaignService.createCampaign({
+        name: formData.campaignName,
+        organization: formData.organization,
+        type: formData.type,
+        pages: formData.page ? [formData.page] : [],
+        status: formData.status,
+        scheduling: {
+          startDate: formData.startDate,
+          endDate: formData.endDate,
+        },
+      });
+
+      // Refresh campaigns
+      const campaignsRes = await campaignService.getCampaigns();
+      const campaignsData = (campaignsRes.data?.data || []).map((c) => ({
+        id: c._id,
+        name: c.name,
+        organization: c.organization?.name || 'No Organization',
+        page: c.pages?.map(p => p.pageName).join(', ') || 'No Pages',
+        type: c.type || 'standard',
+        status: c.status,
+        startDate: c.scheduling?.startDate ? new Date(c.scheduling.startDate).toISOString().split('T')[0] : 'N/A',
+        endDate: c.scheduling?.endDate ? new Date(c.scheduling.endDate).toISOString().split('T')[0] : 'N/A',
+        createdBy: c.createdBy ? `${c.createdBy.firstName} ${c.createdBy.lastName}` : 'Unknown',
+        approvalStatus: c.approvalStatus,
+      }));
+      setCampaigns(campaignsData);
+
+      handleCloseModal();
+      alert('Campaign created successfully!');
+    } catch (err) {
+      alert('Error creating campaign: ' + (err.response?.data?.error || err.message));
+    }
   };
 
   const handleChange = (e) => {
@@ -125,19 +132,60 @@ const CampaignManagement = () => {
     return matchesSearch && matchesType;
   });
 
-  const handleAction = (action, campaign) => {
-    alert(`${action} campaign: ${campaign.name}`);
+  const handleAction = async (action, campaign) => {
+    try {
+      switch (action) {
+        case 'View':
+          alert(`Viewing: ${campaign.name}`);
+          break;
+        case 'Edit':
+          alert(`Editing: ${campaign.name}`);
+          break;
+        case 'Pause':
+          await campaignService.pauseCampaign(campaign.id);
+          setCampaigns(campaigns.map(c => c.id === campaign.id ? { ...c, status: 'paused' } : c));
+          alert('Campaign paused');
+          break;
+        case 'Resume':
+          await campaignService.resumeCampaign(campaign.id);
+          setCampaigns(campaigns.map(c => c.id === campaign.id ? { ...c, status: 'active' } : c));
+          alert('Campaign resumed');
+          break;
+        case 'Delete':
+          if (window.confirm(`Delete "${campaign.name}"?`)) {
+            await campaignService.deleteCampaign(campaign.id);
+            setCampaigns(campaigns.filter(c => c.id !== campaign.id));
+            alert('Campaign deleted');
+          }
+          break;
+        default:
+          break;
+      }
+    } catch (err) {
+      alert('Error: ' + (err.response?.data?.error || err.message));
+    }
   };
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'Active': return 'badge-success';
-      case 'Paused': return 'badge-warning';
-      case 'Draft': return 'badge-secondary';
-      case 'Completed': return 'badge-info';
+      case 'active': return 'badge-success';
+      case 'paused': return 'badge-warning';
+      case 'draft': return 'badge-secondary';
+      case 'completed': return 'badge-info';
       default: return 'badge-secondary';
     }
   };
+
+  if (loading) {
+    return (
+      <div className="content">
+        <div className="loading-state">
+          <Icon name="loading" size={48} />
+          <p>Loading campaigns...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="content">
@@ -153,6 +201,13 @@ const CampaignManagement = () => {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="error-banner">
+          <Icon name="error" size={16} />
+          <span>{error}</span>
+        </div>
+      )}
 
       <div className="card">
         <div className="table-actions">
@@ -208,12 +263,12 @@ const CampaignManagement = () => {
                     <button className="action-btn" onClick={() => handleAction('Edit', campaign)} title="Edit">
                       <Icon name="edit" size={14} />
                     </button>
-                    {campaign.status === 'Active' && (
+                    {campaign.status === 'active' && (
                       <button className="action-btn" onClick={() => handleAction('Pause', campaign)} title="Pause">
                         <Icon name="pause" size={14} />
                       </button>
                     )}
-                    {campaign.status === 'Paused' && (
+                    {campaign.status === 'paused' && (
                       <button className="action-btn" onClick={() => handleAction('Resume', campaign)} title="Resume">
                         <Icon name="play" size={14} />
                       </button>
@@ -257,14 +312,18 @@ const CampaignManagement = () => {
                     <label className="required">Organization</label>
                     <select name="organization" className="form-select" value={formData.organization} onChange={handleChange} required>
                       <option value="">Select Organization</option>
-                      {organizations.map((org) => <option key={org} value={org}>{org}</option>)}
+                      {organizations.map((org) => (
+                        <option key={org.id} value={org.id}>{org.name}</option>
+                      ))}
                     </select>
                   </div>
                   <div className="form-group">
                     <label className="required">Page</label>
                     <select name="page" className="form-select" value={formData.page} onChange={handleChange} required>
                       <option value="">Select Page</option>
-                      {pages.map((page) => <option key={page} value={page}>{page}</option>)}
+                      {pages.map((page) => (
+                        <option key={page._id} value={page._id}>{page.pageName}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -273,13 +332,17 @@ const CampaignManagement = () => {
                     <label className="required">Campaign Type</label>
                     <select name="campaignType" className="form-select" value={formData.campaignType} onChange={handleChange} required>
                       <option value="">Select Type</option>
-                      {campaignTypes.map((type) => <option key={type} value={type}>{type}</option>)}
+                      {campaignTypes.map((type) => (
+                        <option key={type} value={type}>{type}</option>
+                      ))}
                     </select>
                   </div>
                   <div className="form-group">
                     <label className="required">Status</label>
                     <select name="status" className="form-select" value={formData.status} onChange={handleChange}>
-                      {statuses.map((status) => <option key={status} value={status}>{status}</option>)}
+                      {statuses.map((status) => (
+                        <option key={status} value={status}>{status}</option>
+                      ))}
                     </select>
                   </div>
                 </div>

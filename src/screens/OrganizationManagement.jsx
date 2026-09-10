@@ -1,60 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from '../components/ui/Icon';
+import { organizationService } from '../services/api';
 
 const OrganizationManagement = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [orgs, setOrgs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const [orgs, setOrgs] = useState([
-    {
-      id: 1,
-      name: 'Acme Corp',
-      email: 'business@acme.com',
-      phone: '+1 (555) 123-4567',
-      website: 'https://acme.com',
-      address: '123 Business St, New York, NY 10001',
-      admin: 'John Smith',
-      businessType: 'Corporation',
-      status: 'Active',
-      createdDate: '2025-01-15',
-    },
-    {
-      id: 2,
-      name: 'Beta Ltd',
-      email: 'contact@beta.com',
-      phone: '+1 (555) 234-5678',
-      website: 'https://beta.com',
-      address: '456 Enterprise Ave, Los Angeles, CA 90001',
-      admin: 'Sarah Johnson',
-      businessType: 'LLC',
-      status: 'Active',
-      createdDate: '2025-02-20',
-    },
-    {
-      id: 3,
-      name: 'Gamma Inc',
-      email: 'info@gamma.com',
-      phone: '+1 (555) 345-6789',
-      website: 'https://gamma.com',
-      address: '789 Corporate Blvd, Chicago, IL 60601',
-      admin: 'Mike Wilson',
-      businessType: 'Startup',
-      status: 'Inactive',
-      createdDate: '2025-03-10',
-    },
-    {
-      id: 4,
-      name: 'Delta Corp',
-      email: 'hello@delta.com',
-      phone: '+1 (555) 456-7890',
-      website: 'https://delta.com',
-      address: '321 Market St, San Francisco, CA 94103',
-      admin: 'Emma Davis',
-      businessType: 'Corporation',
-      status: 'Active',
-      createdDate: '2025-04-05',
-    },
-  ]);
+  useEffect(() => {
+    const fetchOrgs = async () => {
+      try {
+        const response = await organizationService.getOrganizations();
+        const orgsData = (response.data?.data || []).map((org) => ({
+          id: org._id,
+          name: org.name,
+          email: org.domain || 'N/A',
+          phone: org.phone || 'N/A',
+          website: org.website || 'N/A',
+          address: org.address || 'N/A',
+          admin: org.admin ? `${org.admin.firstName} ${org.admin.lastName}` : 'Not Assigned',
+          businessType: org.type,
+          status: org.status,
+          createdDate: new Date(org.createdAt).toISOString().split('T')[0],
+        }));
+        setOrgs(orgsData);
+      } catch (err) {
+        setError(err.message || 'Failed to load organizations');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrgs();
+  }, []);
 
   const [formData, setFormData] = useState({
     orgName: '',
@@ -64,12 +44,11 @@ const OrganizationManagement = () => {
     address: '',
     businessType: '',
     assignAdmin: '',
-    status: 'Active',
+    status: 'active',
   });
 
-  const businessTypes = ['Corporation', 'LLC', 'Partnership', 'Startup', 'Non-Profit', 'Other'];
-  const admins = ['John Smith', 'Sarah Johnson', 'Mike Wilson', 'Emma Davis', 'Robert Brown'];
-  const statuses = ['Active', 'Inactive'];
+  const businessTypes = ['free', 'basic', 'premium', 'enterprise'];
+  const statuses = ['active', 'inactive', 'suspended', 'pending'];
 
   const handleCreate = () => setShowCreateModal(true);
 
@@ -81,29 +60,47 @@ const OrganizationManagement = () => {
       phone: '',
       website: '',
       address: '',
-      businessType: '',
+      businessType: 'free',
       assignAdmin: '',
-      status: 'Active',
+      status: 'active',
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const newOrg = {
-      id: orgs.length + 1,
-      name: formData.orgName,
-      email: formData.businessEmail,
-      phone: formData.phone,
-      website: formData.website,
-      address: formData.address,
-      admin: formData.assignAdmin,
-      businessType: formData.businessType,
-      status: formData.status,
-      createdDate: new Date().toISOString().split('T')[0],
-    };
-    setOrgs([...orgs, newOrg]);
-    handleCloseModal();
-    alert('Organization created successfully!');
+
+    try {
+      await organizationService.createOrganization({
+        name: formData.orgName,
+        domain: formData.businessEmail,
+        phone: formData.phone,
+        website: formData.website,
+        address: formData.address,
+        type: formData.businessType,
+        admin: formData.assignAdmin,
+        status: formData.status,
+      });
+
+      const response = await organizationService.getOrganizations();
+      const orgsData = (response.data?.data || []).map((org) => ({
+        id: org._id,
+        name: org.name,
+        email: org.domain || 'N/A',
+        phone: org.phone || 'N/A',
+        website: org.website || 'N/A',
+        address: org.address || 'N/A',
+        admin: org.admin ? `${org.admin.firstName} ${org.admin.lastName}` : 'Not Assigned',
+        businessType: org.type,
+        status: org.status,
+        createdDate: new Date(org.createdAt).toISOString().split('T')[0],
+      }));
+      setOrgs(orgsData);
+
+      handleCloseModal();
+      alert('Organization created successfully!');
+    } catch (err) {
+      alert('Error creating organization: ' + (err.response?.data?.error || err.message));
+    }
   };
 
   const handleChange = (e) => {
@@ -116,9 +113,40 @@ const OrganizationManagement = () => {
     org.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleAction = (action, org) => {
-    alert(`${action} organization: ${org.name}`);
+  const handleAction = async (action, org) => {
+    try {
+      switch (action) {
+        case 'View':
+          alert(`Viewing: ${org.name}`);
+          break;
+        case 'Edit':
+          alert(`Editing: ${org.name}`);
+          break;
+        case 'Delete':
+          if (window.confirm(`Deactivate "${org.name}"?`)) {
+            await organizationService.deleteOrganization(org.id);
+            setOrgs(orgs.filter(o => o.id !== org.id));
+            alert('Organization deactivated successfully');
+          }
+          break;
+        default:
+          break;
+      }
+    } catch (err) {
+      alert('Error: ' + (err.response?.data?.error || err.message));
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="content">
+        <div className="loading-state">
+          <Icon name="loading" size={48} />
+          <p>Loading organizations...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="content">
@@ -134,6 +162,13 @@ const OrganizationManagement = () => {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="error-banner">
+          <Icon name="error" size={16} />
+          <span>{error}</span>
+        </div>
+      )}
 
       <div className="card">
         <div className="table-actions">
@@ -175,7 +210,7 @@ const OrganizationManagement = () => {
                   <td>{org.address}</td>
                   <td>{org.admin}</td>
                   <td>
-                    <span className={`badge ${org.status === 'Active' ? 'badge-success' : 'badge-secondary'}`}>
+                    <span className={`badge ${org.status === 'active' ? 'badge-success' : org.status === 'inactive' ? 'badge-secondary' : org.status === 'suspended' ? 'badge-danger' : 'badge-warning'}`}>
                       {org.status}
                     </span>
                   </td>
@@ -300,9 +335,7 @@ const OrganizationManagement = () => {
                       required
                     >
                       <option value="">Select Admin</option>
-                      {admins.map((admin) => (
-                        <option key={admin} value={admin}>{admin}</option>
-                      ))}
+                      {/* Admins would be fetched from API */}
                     </select>
                   </div>
                   <div className="form-group">

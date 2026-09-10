@@ -1,67 +1,51 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from '../components/ui/Icon';
+import { userService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const AdminManagement = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [admins, setAdmins] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [organizations, setOrganizations] = useState([]);
+  const { user } = useAuth();
 
-  const [admins, setAdmins] = useState([
-    {
-      id: 1,
-      name: 'John Smith',
-      username: 'johnsmith',
-      email: 'john@company.com',
-      phone: '+1 (555) 123-4567',
-      role: 'Super Admin',
-      organization: 'Acme Corp',
-      status: 'Active',
-      createdDate: '2025-01-15',
-    },
-    {
-      id: 2,
-      name: 'Sarah Johnson',
-      username: 'sarahj',
-      email: 'sarah@company.com',
-      phone: '+1 (555) 234-5678',
-      role: 'Admin',
-      organization: 'Beta Ltd',
-      status: 'Active',
-      createdDate: '2025-02-20',
-    },
-    {
-      id: 3,
-      name: 'Mike Wilson',
-      username: 'mikew',
-      email: 'mike@company.com',
-      phone: '+1 (555) 345-6789',
-      role: 'Admin',
-      organization: 'Gamma Inc',
-      status: 'Inactive',
-      createdDate: '2025-03-10',
-    },
-    {
-      id: 4,
-      name: 'Emma Davis',
-      username: 'emmad',
-      email: 'emma@company.com',
-      phone: '+1 (555) 456-7890',
-      role: 'Moderator',
-      organization: 'Acme Corp',
-      status: 'Active',
-      createdDate: '2025-04-05',
-    },
-    {
-      id: 5,
-      name: 'Robert Brown',
-      username: 'robertb',
-      email: 'robert@company.com',
-      phone: '+1 (555) 567-8901',
-      role: 'Admin',
-      organization: 'Delta Corp',
-      status: 'Active',
-      createdDate: '2025-04-22',
-    },
-  ]);
+  useEffect(() => {
+    const fetchAdmins = async () => {
+      try {
+        const response = await userService.getUsers({
+          select: 'firstName lastName email username phone role isActive organization createdAt',
+          populate: ['organization'],
+        });
+
+        const adminsData = (response.data?.data || []).map((u, idx) => ({
+          id: u._id,
+          name: `${u.firstName} ${u.lastName}`,
+          username: u.username,
+          email: u.email,
+          phone: u.phone || 'N/A',
+          role: u.role,
+          organization: u.organization?.name || 'No Organization',
+          status: u.isActive ? 'Active' : 'Inactive',
+          createdDate: new Date(u.createdAt).toISOString().split('T')[0],
+        }));
+
+        setAdmins(adminsData);
+
+        // Get unique organizations
+        const orgs = [...new Set(adminsData.map(a => a.organization))];
+        setOrganizations(orgs);
+      } catch (err) {
+        setError(err.response?.data?.error || 'Failed to load admins');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAdmins();
+  }, []);
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -71,12 +55,11 @@ const AdminManagement = () => {
     password: '',
     confirmPassword: '',
     organization: '',
-    role: '',
+    role: 'admin',
     status: 'Active',
   });
 
-  const roles = ['Super Admin', 'Admin', 'Moderator', 'Viewer'];
-  const organizations = ['Acme Corp', 'Beta Ltd', 'Gamma Inc', 'Delta Corp', 'Epsilon LLC'];
+  const roles = ['user', 'admin', 'organization_admin', 'super_admin'];
   const statuses = ['Active', 'Inactive'];
 
   const handleCreate = () => {
@@ -93,31 +76,55 @@ const AdminManagement = () => {
       password: '',
       confirmPassword: '',
       organization: '',
-      role: '',
+      role: 'admin',
       status: 'Active',
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (formData.password !== formData.confirmPassword) {
       alert('Passwords do not match!');
       return;
     }
-    const newAdmin = {
-      id: admins.length + 1,
-      name: formData.fullName,
-      username: formData.username,
-      email: formData.email,
-      phone: formData.phone,
-      role: formData.role,
-      organization: formData.organization,
-      status: formData.status,
-      createdDate: new Date().toISOString().split('T')[0],
-    };
-    setAdmins([...admins, newAdmin]);
-    handleCloseModal();
-    alert('Admin created successfully!');
+
+    try {
+      const [firstName, ...lastNameParts] = formData.fullName.split(' ');
+      const lastName = lastNameParts.join(' ');
+
+      await userService.createUser({
+        firstName: firstName || '',
+        lastName: lastName || '',
+        username: formData.username,
+        email: formData.email,
+        phone: formData.phone,
+        password: formData.password,
+        organization: formData.organization,
+        role: formData.role,
+        isActive: formData.status === 'Active',
+      });
+
+      // Refresh the list
+      const response = await userService.getUsers();
+      const adminsData = (response.data?.data || []).map((u) => ({
+        id: u._id,
+        name: `${u.firstName} ${u.lastName}`,
+        username: u.username,
+        email: u.email,
+        phone: u.phone || 'N/A',
+        role: u.role,
+        organization: u.organization?.name || 'No Organization',
+        status: u.isActive ? 'Active' : 'Inactive',
+        createdDate: new Date(u.createdAt).toISOString().split('T')[0],
+      }));
+      setAdmins(adminsData);
+
+      handleCloseModal();
+      alert('Admin created successfully!');
+    } catch (err) {
+      alert('Error creating admin: ' + (err.response?.data?.error || err.message));
+    }
   };
 
   const handleChange = (e) => {
@@ -132,9 +139,44 @@ const AdminManagement = () => {
   );
 
   const handleAction = (action, admin) => {
-    console.log(action, admin);
-    alert(`${action} admin: ${admin.name}`);
+    switch (action) {
+      case 'View':
+        alert(`Viewing: ${admin.name}\nEmail: ${admin.email}\nRole: ${admin.role}`);
+        break;
+      case 'Edit':
+        alert(`Editing: ${admin.name}`);
+        break;
+      case 'Delete':
+        if (window.confirm(`Deactivate "${admin.name}"?`)) {
+          userService.deleteUser(admin.id).then(() => {
+            setAdmins(admins.map(a => a.id === admin.id ? { ...a, status: 'Inactive' } : a));
+            alert('Admin deactivated successfully');
+          });
+        }
+        break;
+      case 'Activate':
+        if (window.confirm(`Activate "${admin.name}"?`)) {
+          userService.updateUser(admin.id, { isActive: true }).then(() => {
+            setAdmins(admins.map(a => a.id === admin.id ? { ...a, status: 'Active' } : a));
+            alert('Admin activated successfully');
+          });
+        }
+        break;
+      default:
+        break;
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="content">
+        <div className="loading-state">
+          <Icon name="loading" size={48} />
+          <p>Loading admin management...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="content">
@@ -150,6 +192,13 @@ const AdminManagement = () => {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="error-banner">
+          <Icon name="error" size={16} />
+          <span>{error}</span>
+        </div>
+      )}
 
       <div className="card">
         <div className="table-actions">
@@ -220,13 +269,13 @@ const AdminManagement = () => {
 
         <div className="pagination">
           <div className="pagination-info">
-            <span>Showing 1-5 of 24 results</span>
+            <span>Showing 1-{filteredAdmins.length} of {admins.length} results</span>
           </div>
           <div className="pagination-controls">
-            <button className="btn-icon" style={{ width: '32px', height: '32px' }} disabled>
+            <button className="btn-icon" disabled>
               <Icon name="chevronLeft" size={14} />
             </button>
-            <button className="btn-icon" style={{ width: '32px', height: '32px' }}>
+            <button className="btn-icon">
               <Icon name="chevronRight" size={14} />
             </button>
           </div>
@@ -348,7 +397,6 @@ const AdminManagement = () => {
                       onChange={handleChange}
                       required
                     >
-                      <option value="">Select Role</option>
                       {roles.map((role) => (
                         <option key={role} value={role}>{role}</option>
                       ))}

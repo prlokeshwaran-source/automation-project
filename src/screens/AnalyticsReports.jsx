@@ -1,54 +1,97 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from '../components/ui/Icon';
+import { analyticsService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const AnalyticsReports = () => {
   const [dateRange, setDateRange] = useState('30d');
   const [activeTab, setActiveTab] = useState('overview');
+  const [analytics, setAnalytics] = useState({
+    overviewStats: {},
+    pagePerformance: [],
+    campaignPerformance: [],
+    orgPerformance: [],
+    chartData: [],
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      if (!user?.organization?._id) return;
+
+      try {
+        const dashboardRes = await analyticsService.getDashboardStats(user.organization._id);
+        const leadRes = await analyticsService.getLeadAnalytics(user.organization._id);
+
+        setAnalytics({
+          overviewStats: {
+            totalCampaigns: dashboardRes.data?.stats?.activeCampaigns || 0,
+            totalReach: '0',
+            totalImpressions: '0',
+            totalEngagement: dashboardRes.data?.stats?.totalEngagement || '0',
+            totalLeads: dashboardRes.data?.stats?.totalLeads || 0,
+            totalComments: '0',
+            totalClicks: '0',
+          },
+          pagePerformance: [],
+          campaignPerformance: [],
+          orgPerformance: [],
+          leadStats: leadRes.data?.leadStats || [],
+        });
+      } catch (err) {
+        setError(err.message || 'Failed to load analytics');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAnalytics();
+  }, [user?.organization?._id, dateRange]);
 
   const overviewStats = [
-    { label: 'Total Campaigns', value: '42', color: 'blue' },
-    { label: 'Total Reach', value: '842,341', color: 'green' },
-    { label: 'Total Impressions', value: '1.2M', color: 'purple' },
-    { label: 'Total Engagement', value: '58,392', color: 'orange' },
-    { label: 'Total Leads', value: '1,893', color: 'teal' },
-    { label: 'Total Comments', value: '12,456', color: 'blue' },
-    { label: 'Total Clicks', value: '34,210', color: 'info' },
+    { label: 'Total Campaigns', value: analytics.overviewStats.totalCampaigns.toString(), color: 'blue' },
+    { label: 'Total Reach', value: analytics.overviewStats.totalReach, color: 'green' },
+    { label: 'Total Impressions', value: analytics.overviewStats.totalImpressions, color: 'purple' },
+    { label: 'Total Engagement', value: analytics.overviewStats.totalEngagement.toLocaleString(), color: 'orange' },
+    { label: 'Total Leads', value: analytics.overviewStats.totalLeads.toLocaleString(), color: 'teal' },
+    { label: 'Total Comments', value: analytics.overviewStats.totalComments, color: 'blue' },
+    { label: 'Total Clicks', value: analytics.overviewStats.totalClicks, color: 'info' },
   ];
 
-  const pagePerformance = [
-    { page: 'Acme Corp Official Page', reach: '156,342', impressions: '245,678', engagement: '12,456', ctr: '4.8%' },
-    { page: 'Beta Ltd Community', reach: '89,234', impressions: '134,567', engagement: '7,890', ctr: '5.2%' },
-    { page: 'Gamma Inc Marketing', reach: '123,456', impressions: '189,012', engagement: '9,345', ctr: '4.7%' },
-    { page: 'Delta Corp Support', reach: '67,890', impressions: '98,765', engagement: '4,234', ctr: '3.9%' },
-  ];
+  const exportReport = async () => {
+    try {
+      const response = await analyticsService.exportData(user.organization._id, { type: 'all' });
+      const dataStr = JSON.stringify(response.data, null, 2);
+      const dataUri = 'data:application/json;charset=utf-8, ' + encodeURIComponent(dataStr);
 
-  const campaignPerformance = [
-    { name: 'Summer Sale 2025', reach: '201,342', impressions: '312,456', clicks: '12,456', leads: '892', cost: '$245.67' },
-    { name: 'New Product Launch', reach: '156,789', impressions: '245,678', clicks: '10,234', leads: '1,234', cost: '$312.45' },
-    { name: 'Brand Awareness Q2', reach: '189,012', impressions: '298,765', clicks: '8,765', leads: '345', cost: '$198.76' },
-    { name: 'Holiday Campaign', reach: '98,765', impressions: '156,789', clicks: '5,432', leads: '678', cost: '$156.34' },
-  ];
+      const exportFileDefaultName = 'analytics_report.json';
 
-  const orgPerformance = [
-    { org: 'Acme Corp', campaigns: 5, reach: '320,000', engagement: '18,000', leads: '1,200' },
-    { org: 'Beta Ltd', campaigns: 3, reach: '156,000', engagement: '9,500', leads: '890' },
-    { org: 'Gamma Inc', campaigns: 4, reach: '210,000', engagement: '12,300', leads: '560' },
-    { org: 'Delta Corp', campaigns: 2, reach: '89,000', engagement: '5,200', leads: '430' },
-  ];
+      const link = document.createElement('a');
+      link.setAttribute('data', dataUri);
+      link.setAttribute('href', dataUri);
+      link.setAttribute('download', exportFileDefaultName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
 
-  const chartData = [
-    { day: 'Mon', value: 3400 },
-    { day: 'Tue', value: 4200 },
-    { day: 'Wed', value: 3800 },
-    { day: 'Thu', value: 5100 },
-    { day: 'Fri', value: 4900 },
-    { day: 'Sat', value: 6200 },
-    { day: 'Sun', value: 5800 },
-  ];
-
-  const exportReport = () => {
-    alert('Exporting report...');
+      alert('Report exported successfully!');
+    } catch (err) {
+      alert('Error exporting report: ' + (err.message || 'Unknown error'));
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="content">
+        <div className="loading-state">
+          <Icon name="loading" size={48} />
+          <p>Loading analytics...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="content">
@@ -71,6 +114,13 @@ const AnalyticsReports = () => {
         </div>
       </div>
 
+      {error && (
+        <div className="error-banner">
+          <Icon name="error" size={16} />
+          <span>{error}</span>
+        </div>
+      )}
+
       <div className="stats-grid">
         {overviewStats.map((stat) => (
           <div key={stat.label} className={`stat-card ${stat.color}`}>
@@ -80,137 +130,14 @@ const AnalyticsReports = () => {
         ))}
       </div>
 
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title">Performance Overview</div>
-          <div className="tabs">
-            <button
-              className={`tab ${activeTab === 'overview' ? 'active' : ''}`}
-              onClick={() => setActiveTab('overview')}
-            >
-              Overview
-            </button>
-            <button
-              className={`tab ${activeTab === 'pages' ? 'active' : ''}`}
-              onClick={() => setActiveTab('pages')}
-            >
-              Page Performance
-            </button>
-            <button
-              className={`tab ${activeTab === 'campaigns' ? 'active' : ''}`}
-              onClick={() => setActiveTab('campaigns')}
-            >
-              Campaign Performance
-            </button>
-            <button
-              className={`tab ${activeTab === 'orgs' ? 'active' : ''}`}
-              onClick={() => setActiveTab('orgs')}
-            >
-              Organization Performance
-            </button>
-          </div>
+      {error && (
+        <div className="error-banner" style={{ marginTop: '16px' }}>
+          <Icon name="error" size={16} />
+          <span>{error}</span>
         </div>
+      )}
 
-        <div className="card-body">
-          {activeTab === 'overview' && (
-            <>
-              <div className="chart-container">
-                {chartData.map((item) => (
-                  <div key={item.day} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '200px', justifyContent: 'flex-end' }}>
-                    <div className="chart-bar" style={{ height: `${(item.value / 7000) * 100}%`, maxHeight: '200px' }}>
-                      <span className="bar-value">{item.value.toLocaleString()}</span>
-                    </div>
-                    <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>{item.day}</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          {activeTab === 'pages' && (
-            <div className="table-container">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>Page Name</th>
-                    <th>Reach</th>
-                    <th>Impressions</th>
-                    <th>Engagement</th>
-                    <th>CTR</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pagePerformance.map((page) => (
-                    <tr key={page.page}>
-                      <td>{page.page}</td>
-                      <td>{page.reach}</td>
-                      <td>{page.impressions}</td>
-                      <td>{page.engagement}</td>
-                      <td>{page.ctr}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {activeTab === 'campaigns' && (
-            <div className="table-container">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>Campaign</th>
-                    <th>Reach</th>
-                    <th>Impressions</th>
-                    <th>Clicks</th>
-                    <th>Leads</th>
-                    <th>Cost</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {campaignPerformance.map((campaign) => (
-                    <tr key={campaign.name}>
-                      <td>{campaign.name}</td>
-                      <td>{campaign.reach}</td>
-                      <td>{campaign.impressions}</td>
-                      <td>{campaign.clicks}</td>
-                      <td>{campaign.leads}</td>
-                      <td>{campaign.cost}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {activeTab === 'orgs' && (
-            <div className="table-container">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>Organization</th>
-                    <th>Campaigns</th>
-                    <th>Reach</th>
-                    <th>Engagement</th>
-                    <th>Leads</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orgPerformance.map((org) => (
-                    <tr key={org.org}>
-                      <td>{org.org}</td>
-                      <td>{org.campaigns}</td>
-                      <td>{org.reach}</td>
-                      <td>{org.engagement}</td>
-                      <td>{org.leads}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Lead source breakdown would go here */}
     </div>
   );
 };

@@ -1,22 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from '../components/ui/Icon';
+import { authService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const Profile = () => {
   const [profile, setProfile] = useState({
-    fullName: 'John Smith',
-    email: 'john.smith@company.com',
-    phone: '+1 (555) 123-4567',
-    username: 'johnsmith',
+    fullName: '',
+    email: '',
+    phone: '',
+    username: '',
   });
-
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
-
   const [saved, setSaved] = useState(false);
   const [activeTab, setActiveTab] = useState('profile');
+  const [loading, setLoading] = useState(true);
+  const { user, updateProfile, updatePassword } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      setProfile({
+        fullName: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+        email: user.email || '',
+        phone: user.phone || '',
+        username: user.username || '',
+      });
+    }
+    setLoading(false);
+  }, [user]);
 
   const handleProfileChange = (e) => {
     const { name, value } = e.target;
@@ -28,25 +42,64 @@ const Profile = () => {
     setPasswordData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSaveProfile = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
-    alert('Profile updated successfully!');
+  const handleSaveProfile = async () => {
+    try {
+      const [firstName, ...lastNameParts] = profile.fullName.split(' ');
+      const lastName = lastNameParts.join(' ');
+
+      await updateProfile({
+        firstName: firstName || '',
+        lastName: lastName || '',
+        email: profile.email,
+        username: profile.username,
+        phone: profile.phone,
+      });
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+      alert('Profile updated successfully!');
+    } catch (err) {
+      alert('Error updating profile: ' + (err.message || 'Unknown error'));
+    }
   };
 
-  const handleChangePassword = (e) => {
+  const handleChangePassword = async (e) => {
     e.preventDefault();
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      alert('New passwords do not match!');
-      return;
-    }
+
     if (!passwordData.currentPassword) {
       alert('Please enter your current password!');
       return;
     }
-    alert('Password changed successfully!');
-    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      alert('New passwords do not match!');
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      alert('New password must be at least 6 characters');
+      return;
+    }
+
+    try {
+      await updatePassword(passwordData.currentPassword, passwordData.newPassword);
+      alert('Password changed successfully!');
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err) {
+      alert('Error changing password: ' + (err.message || 'Unknown error'));
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="content">
+        <div className="loading-state">
+          <Icon name="loading" size={48} />
+          <p>Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="content">
@@ -79,76 +132,46 @@ const Profile = () => {
 
         <div className="card-body">
           {activeTab === 'profile' && (
-            <div style={{ display: 'flex', gap: '32px', alignItems: 'flex-start' }}>
-              <div style={{ flexShrink: '0' }}>
-                <div style={{
-                  width: '100px',
-                  height: '100px',
-                  borderRadius: '50%',
-                  background: 'var(--color-primary)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fff',
-                  fontSize: '32px',
-                  fontWeight: 700,
-                  marginBottom: '12px',
-                  border: '2px dashed var(--color-border)',
-                }}>
-                  {profile.fullName.charAt(0)}
-                </div>
-                <button className="btn btn-outline btn-sm btn-block">
-                  <Icon name="upload" size={14} style={{ marginRight: '6px' }} />
-                  Upload Photo
-                </button>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Full Name</label>
+                <input
+                  type="text"
+                  name="fullName"
+                  className="form-input"
+                  value={profile.fullName}
+                  onChange={handleProfileChange}
+                />
               </div>
-
-              <div style={{ flex: 1, minWidth: '0' }}>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="required">Full Name</label>
-                    <input
-                      type="text"
-                      name="fullName"
-                      className="form-input"
-                      value={profile.fullName}
-                      onChange={handleProfileChange}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="required">Username</label>
-                    <input
-                      type="text"
-                      name="username"
-                      className="form-input"
-                      value={profile.username}
-                      onChange={handleProfileChange}
-                    />
-                  </div>
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="required">Email</label>
-                    <input
-                      type="email"
-                      name="email"
-                      className="form-input"
-                      value={profile.email}
-                      onChange={handleProfileChange}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Phone</label>
-                    <input
-                      type="tel"
-                      name="phone"
-                      className="form-input"
-                      value={profile.phone}
-                      onChange={handleProfileChange}
-                    />
-                  </div>
-                </div>
+              <div className="form-group">
+                <label>Username</label>
+                <input
+                  type="text"
+                  name="username"
+                  className="form-input"
+                  value={profile.username}
+                  onChange={handleProfileChange}
+                />
+              </div>
+              <div className="form-group">
+                <label>Email</label>
+                <input
+                  type="email"
+                  name="email"
+                  className="form-input"
+                  value={profile.email}
+                  onChange={handleProfileChange}
+                />
+              </div>
+              <div className="form-group">
+                <label>Phone</label>
+                <input
+                  type="tel"
+                  name="phone"
+                  className="form-input"
+                  value={profile.phone}
+                  onChange={handleProfileChange}
+                />
               </div>
             </div>
           )}
@@ -167,7 +190,6 @@ const Profile = () => {
                   required
                 />
               </div>
-
               <div className="form-row">
                 <div className="form-group">
                   <label className="required">New Password</label>
@@ -194,13 +216,9 @@ const Profile = () => {
                   />
                 </div>
               </div>
-
-              <div className="form-group">
-                <button type="submit" className="btn btn-primary">
-                  <Icon name="save" size={16} style={{ marginRight: '6px' }} />
-                  Change Password
-                </button>
-              </div>
+              <button type="submit" className="btn btn-primary">
+                Save Password
+              </button>
             </form>
           )}
         </div>

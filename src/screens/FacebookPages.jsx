@@ -1,61 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from '../components/ui/Icon';
+import { facebookService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const FacebookPages = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [pages, setPages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { user } = useAuth();
 
-  const [pages, setPages] = useState([
-    {
-      id: 1,
-      pageName: 'Acme Corp Official Page',
-      pageId: '102837465012345',
-      organization: 'Acme Corp',
-      admin: 'John Smith',
-      connectionStatus: 'Connected',
-      accessTokenStatus: 'Valid',
-      connectedDate: '2025-01-20',
-    },
-    {
-      id: 2,
-      pageName: 'Beta Ltd Community',
-      pageId: '987654321098765',
-      organization: 'Beta Ltd',
-      admin: 'Sarah Johnson',
-      connectionStatus: 'Connected',
-      accessTokenStatus: 'Valid',
-      connectedDate: '2025-02-15',
-    },
-    {
-      id: 3,
-      pageName: 'Gamma Inc Marketing',
-      pageId: '456789123045678',
-      organization: 'Gamma Inc',
-      admin: 'Mike Wilson',
-      connectionStatus: 'Disconnected',
-      accessTokenStatus: 'Expired',
-      connectedDate: '2025-03-10',
-    },
-    {
-      id: 4,
-      pageName: 'Delta Corp Support',
-      pageId: '321654987032165',
-      organization: 'Delta Corp',
-      admin: 'Emma Davis',
-      connectionStatus: 'Connected',
-      accessTokenStatus: 'Valid',
-      connectedDate: '2025-04-02',
-    },
-    {
-      id: 5,
-      pageName: 'Epsilon LLC Store',
-      pageId: '654321098765432',
-      organization: 'Epsilon LLC',
-      admin: 'Robert Brown',
-      connectionStatus: 'Pending',
-      accessTokenStatus: 'Valid',
-      connectedDate: '2025-04-18',
-    },
-  ]);
+  useEffect(() => {
+    const fetchPages = async () => {
+      if (!user?.organization?._id) return;
+
+      try {
+        const response = await facebookService.getPages(user.organization._id);
+        const pagesData = (response.data?.pages || []).map((page) => ({
+          id: page._id,
+          pageName: page.pageName,
+          pageId: page.pageId,
+          organization: page.organization?.name || 'No Organization',
+          admin: 'Admin User',
+          connectionStatus: page.status?.toUpperCase() || 'CONNECTED',
+          tokenStatus: page.tokenStatus?.toUpperCase() || 'VALID',
+          connectedDate: new Date(page.createdAt).toISOString().split('T')[0],
+          syncEnabled: page.syncEnabled,
+        }));
+        setPages(pagesData);
+      } catch (err) {
+        setError(err.message || 'Failed to load pages');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPages();
+  }, [user?.organization?._id]);
 
   const filteredPages = pages.filter((page) =>
     page.pageName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -67,17 +48,33 @@ const FacebookPages = () => {
     alert(`Viewing page: ${page.pageName}\nPage ID: ${page.pageId}`);
   };
 
-  const handleDisconnect = (page) => {
+  const handleDisconnect = async (page) => {
     if (window.confirm(`Disconnect "${page.pageName}"?`)) {
-      const updated = pages.map((p) =>
-        p.id === page.id
-          ? { ...p, connectionStatus: 'Disconnected', accessTokenStatus: 'Expired' }
-          : p
-      );
-      setPages(updated);
-      alert('Page disconnected successfully!');
+      try {
+        // Update page sync settings instead of actual disconnect
+        await facebookService.updateConfig(page.id, { syncEnabled: false });
+        setPages(pages.map(p =>
+          p.id === page.id
+            ? { ...p, connectionStatus: 'DISCONNECTED', tokenStatus: 'EXPIRED' }
+            : p
+        ));
+        alert('Page disconnected successfully!');
+      } catch (err) {
+        alert('Error disconnecting page: ' + (err.message || 'Unknown error'));
+      }
     }
   };
+
+  if (loading) {
+    return (
+      <div className="content">
+        <div className="loading-state">
+          <Icon name="loading" size={48} />
+          <p>Loading Facebook pages...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="content">
@@ -87,12 +84,19 @@ const FacebookPages = () => {
           <p className="page-subtitle">Manage connected Facebook pages</p>
         </div>
         <div className="page-actions">
-          <button className="btn btn-outline">
+          <button className="btn btn-outline" onClick={() => window.location.reload()}>
             <Icon name="refresh" size={16} style={{ marginRight: '6px' }} />
             Sync Pages
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="error-banner">
+          <Icon name="error" size={16} />
+          <span>{error}</span>
+        </div>
+      )}
 
       <div className="card">
         <div className="table-actions">
@@ -114,7 +118,6 @@ const FacebookPages = () => {
                 <th>Page Name</th>
                 <th>Page ID</th>
                 <th>Organization</th>
-                <th>Admin</th>
                 <th>Connection Status</th>
                 <th>Access Token Status</th>
                 <th>Connected Date</th>
@@ -127,15 +130,20 @@ const FacebookPages = () => {
                   <td><strong>{page.pageName}</strong></td>
                   <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{page.pageId}</td>
                   <td>{page.organization}</td>
-                  <td>{page.admin}</td>
                   <td>
-                    <span className={`badge ${page.connectionStatus === 'Connected' ? 'badge-success' : page.connectionStatus === 'Disconnected' ? 'badge-secondary' : 'badge-warning'}`}>
+                    <span className={`badge ${
+                      page.connectionStatus === 'CONNECTED'
+                        ? 'badge-success'
+                        : page.connectionStatus === 'DISCONNECTED'
+                          ? 'badge-secondary'
+                          : 'badge-warning'
+                    }`}>
                       {page.connectionStatus}
                     </span>
                   </td>
                   <td>
-                    <span className={`badge ${page.accessTokenStatus === 'Valid' ? 'badge-success' : 'badge-danger'}`}>
-                      {page.accessTokenStatus}
+                    <span className={`badge ${page.tokenStatus === 'VALID' ? 'badge-success' : 'badge-danger'}`}>
+                      {page.tokenStatus}
                     </span>
                   </td>
                   <td>{page.connectedDate}</td>
@@ -143,7 +151,7 @@ const FacebookPages = () => {
                     <button className="action-btn" onClick={() => handleView(page)} title="View">
                       <Icon name="view" size={14} />
                     </button>
-                    {page.connectionStatus !== 'Disconnected' && (
+                    {page.connectionStatus !== 'DISCONNECTED' && (
                       <button className="action-btn" onClick={() => handleDisconnect(page)} title="Disconnect">
                         <Icon name="disconnect" size={14} />
                       </button>
@@ -157,7 +165,7 @@ const FacebookPages = () => {
 
         <div className="pagination">
           <div className="pagination-info">
-            <span>Showing 1-{filteredPages.length} of 12 results</span>
+            <span>Showing 1-{filteredPages.length} of {pages.length} results</span>
           </div>
           <div className="pagination-controls">
             <button className="btn-icon" disabled>

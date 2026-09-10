@@ -1,165 +1,94 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from '../components/ui/Icon';
+import { roleService } from '../services/api';
 
 const RolesPermissions = () => {
-  const [showModal, setShowModal] = useState(false);
-  const [editingRole, setEditingRole] = useState(null);
-
-  const [roles] = useState([
-    {
-      id: 1,
-      name: 'Super Admin',
-      description: 'Full access to all system features and settings',
-      usersCount: 1,
-      permissions: {
-        dashboard: { view: true, create: true, edit: true, delete: true },
-        pages: { view: true, create: true, edit: true, delete: true },
-        messages: { view: true, create: true, edit: true, delete: true },
-        comments: { view: true, create: true, edit: true, delete: true },
-        automation: { view: true, create: true, edit: true, delete: true },
-        campaigns: { view: true, create: true, edit: true, delete: true },
-        leads: { view: true, create: true, edit: true, delete: true },
-        analytics: { view: true, create: true, edit: true, delete: true },
-        reports: { view: true, create: true, edit: true, delete: true },
-        users: { view: true, create: true, edit: true, delete: true },
-        settings: { view: true, create: true, edit: true, delete: true },
-      },
-      status: 'Active',
-    },
-    {
-      id: 2,
-      name: 'Admin',
-      description: 'Full access except system settings and role management',
-      usersCount: 8,
-      permissions: {
-        dashboard: { view: true, create: true, edit: true, delete: true },
-        pages: { view: true, create: true, edit: true, delete: true },
-        messages: { view: true, create: true, edit: true, delete: true },
-        comments: { view: true, create: true, edit: true, delete: true },
-        automation: { view: true, create: true, edit: true, delete: true },
-        campaigns: { view: true, create: true, edit: true, delete: true },
-        leads: { view: true, create: true, edit: true, delete: true },
-        analytics: { view: true, create: true, edit: true, delete: true },
-        reports: { view: true, create: true, edit: true, delete: true },
-        users: { view: true, create: true, edit: true, delete: true },
-        settings: { view: true, create: false, edit: false, delete: false },
-      },
-      status: 'Active',
-    },
-    {
-      id: 3,
-      name: 'Moderator',
-      description: 'Can manage campaigns, pages, and content moderation',
-      usersCount: 15,
-      permissions: {
-        dashboard: { view: true, create: false, edit: false, delete: false },
-        pages: { view: true, create: true, edit: true, delete: false },
-        messages: { view: true, create: true, edit: true, delete: false },
-        comments: { view: true, create: true, edit: true, delete: true },
-        automation: { view: true, create: false, edit: false, delete: false },
-        campaigns: { view: true, create: true, edit: true, delete: false },
-        leads: { view: true, create: false, edit: false, delete: false },
-        analytics: { view: true, create: false, edit: false, delete: false },
-        reports: { view: true, create: false, edit: false, delete: false },
-        users: { view: false, create: false, edit: false, delete: false },
-        settings: { view: false, create: false, edit: false, delete: false },
-      },
-      status: 'Active',
-    },
-    {
-      id: 4,
-      name: 'Viewer',
-      description: 'Read-only access to campaigns and analytics',
-      usersCount: 5,
-      permissions: {
-        dashboard: { view: true, create: false, edit: false, delete: false },
-        pages: { view: true, create: false, edit: false, delete: false },
-        messages: { view: true, create: false, edit: false, delete: false },
-        comments: { view: true, create: false, edit: false, delete: false },
-        automation: { view: true, create: false, edit: false, delete: false },
-        campaigns: { view: true, create: false, edit: false, delete: false },
-        leads: { view: true, create: false, edit: false, delete: false },
-        analytics: { view: true, create: false, edit: false, delete: false },
-        reports: { view: true, create: false, edit: false, delete: false },
-        users: { view: false, create: false, edit: false, delete: false },
-        settings: { view: false, create: false, edit: false, delete: false },
-      },
-      status: 'Inactive',
-    },
-  ]);
-
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [roles, setRoles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
     roleName: '',
     description: '',
-    status: 'Active',
+    permissions: [],
   });
 
-  const permissionModules = [
-    { key: 'dashboard', label: 'Dashboard' },
-    { key: 'pages', label: 'Pages' },
-    { key: 'messages', label: 'Messages' },
-    { key: 'comments', label: 'Comments' },
-    { key: 'automation', label: 'Automation' },
-    { key: 'campaigns', label: 'Campaigns' },
-    { key: 'leads', label: 'Leads' },
-    { key: 'analytics', label: 'Analytics' },
-    { key: 'reports', label: 'Reports' },
-    { key: 'users', label: 'Users' },
-    { key: 'settings', label: 'Settings' },
+  const allPermissions = [
+    { id: 'manage_users', label: 'Manage Users' },
+    { id: 'manage_organizations', label: 'Manage Organizations' },
+    { id: 'manage_campaigns', label: 'Manage Campaigns' },
+    { id: 'manage_leads', label: 'Manage Leads' },
+    { id: 'manage_documents', label: 'Manage Documents' },
+    { id: 'manage_settings', label: 'Manage Settings' },
+    { id: 'view_analytics', label: 'View Analytics' },
+    { id: 'manage_audit', label: 'Manage Audit' },
+    { id: 'manage_notifications', label: 'Manage Notifications' },
+    { id: 'manage_facebook', label: 'Manage Facebook' },
+    { id: 'manage_roles', label: 'Manage Roles' },
+    { id: 'export_data', label: 'Export Data' },
   ];
 
-  const permissionActions = [
-    { key: 'view', label: 'View' },
-    { key: 'create', label: 'Create' },
-    { key: 'edit', label: 'Edit' },
-    { key: 'delete', label: 'Delete' },
-  ];
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const response = await roleService.getRoles();
+        const rolesData = (response.data?.data || []).map((role) => ({
+          id: role._id,
+          name: role.name,
+          description: role.description || '',
+          permissions: role.permissions || [],
+          isSystem: role.isSystem,
+          createdAt: role.createdAt,
+        }));
+        setRoles(rolesData);
+      } catch (err) {
+        setError(err.message || 'Failed to load roles');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const [permissionOverrides, setPermissionOverrides] = useState({});
+    fetchRoles();
+  }, []);
 
-  const handleCreate = () => {
-    setShowModal(true);
-    setEditingRole(null);
-    setPermissionOverrides({});
-    setFormData({ roleName: '', description: '', status: 'Active' });
-  };
-
-  const handleEdit = (role) => {
-    setShowModal(true);
-    setEditingRole(role);
-    setFormData({ roleName: role.name, description: role.description, status: role.status });
-    setPermissionOverrides({});
-  };
+  const handleCreate = () => setShowCreateModal(true);
 
   const handleCloseModal = () => {
-    setShowModal(false);
-    setEditingRole(null);
-    setPermissionOverrides({});
-    setFormData({ roleName: '', description: '', status: 'Active' });
-  };
-
-  const handlePermissionToggle = (module, action) => {
-    setPermissionOverrides((prev) => {
-      const current = editingRole ? editingRole.permissions[module]?.[action] : false;
-      const overrides = prev[module] || {};
-      return {
-        ...prev,
-        [module]: { ...overrides, [action]: !current && !overrides[action] ? true : false },
-      };
+    setShowCreateModal(false);
+    setFormData({
+      roleName: '',
+      description: '',
+      permissions: [],
     });
   };
 
-  const isPermissionChecked = (module, action) => {
-    if (permissionOverrides[module]?.[action] !== undefined) {
-      return permissionOverrides[module]?.[action];
-    }
-    return editingRole?.permissions[module]?.[action] || false;
-  };
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    alert(editingRole ? 'Role updated!' : 'Role created!');
-    handleCloseModal();
+
+    try {
+      await roleService.createRole({
+        name: formData.roleName,
+        description: formData.description,
+        permissions: formData.permissions,
+      });
+
+      const response = await roleService.getRoles();
+      const rolesData = (response.data?.data || []).map((role) => ({
+        id: role._id,
+        name: role.name,
+        description: role.description || '',
+        permissions: role.permissions || [],
+        isSystem: role.isSystem,
+        createdAt: role.createdAt,
+      }));
+      setRoles(rolesData);
+
+      handleCloseModal();
+      alert('Role created successfully!');
+    } catch (err) {
+      alert('Error creating role: ' + (err.response?.data?.error || err.message));
+    }
   };
 
   const handleChange = (e) => {
@@ -167,55 +96,113 @@ const RolesPermissions = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const getStatusColor = (status) => (status === 'Active' ? 'badge-success' : 'badge-secondary');
+  const handlePermissionChange = (permissionId) => {
+    setFormData((prev) => {
+      const newPermissions = prev.permissions.includes(permissionId)
+        ? prev.permissions.filter(p => p !== permissionId)
+        : [...prev.permissions, permissionId];
+      return { ...prev, permissions: newPermissions };
+    });
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await roleService.deleteRole(id);
+      setRoles(roles.filter(role => role.id !== id));
+      alert('Role deleted successfully');
+    } catch (err) {
+      alert('Error deleting role: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const filteredRoles = roles.filter((role) =>
+    role.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    role.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  if (loading) {
+    return (
+      <div className="content">
+        <div className="loading-state">
+          <Icon name="loading" size={48} />
+          <p>Loading roles...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="content">
       <div className="page-header">
         <div>
           <h1 className="page-title">Roles & Permissions</h1>
-          <p className="page-subtitle">Manage user roles and their permissions</p>
+          <p className="page-subtitle">Define access across modules and actions.</p>
         </div>
-        <button className="btn btn-primary" onClick={handleCreate}>
-          <span style={{ marginRight: '6px' }}>+</span>
-          Create Role
-        </button>
+        <div className="page-actions">
+          <button className="btn btn-primary" onClick={handleCreate}>
+            <span style={{ marginRight: '6px' }}>+</span>
+            Create Role
+          </button>
+        </div>
       </div>
 
+      {error && (
+        <div className="error-banner">
+          <Icon name="error" size={16} />
+          <span>{error}</span>
+        </div>
+      )}
+
       <div className="card">
+        <div className="table-actions">
+          <div className="table-search">
+            <Icon name="search" size={16} color="var(--color-text-muted)" />
+            <input
+              type="text"
+              placeholder="Search roles..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
+
         <div className="table-container">
           <table className="admin-table">
             <thead>
               <tr>
                 <th>Role Name</th>
                 <th>Description</th>
-                <th>Users Count</th>
                 <th>Permissions</th>
-                <th>Status</th>
+                <th>System Role</th>
                 <th className="actions-cell">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {roles.map((role) => (
+              {filteredRoles.map((role) => (
                 <tr key={role.id}>
                   <td><strong>{role.name}</strong></td>
-                  <td>{role.description}</td>
-                  <td>{role.usersCount}</td>
+                  <td>{role.description || '-'}</td>
+                  <td>{role.permissions.length} permissions</td>
                   <td>
-                    {permissionModules.filter((mod) =>
-                      Object.values(role.permissions[mod.key] || {}).some(Boolean)
-                    ).length} / {permissionModules.length} modules
-                  </td>
-                  <td>
-                    <span className={`badge ${getStatusColor(role.status)}`}>{role.status}</span>
+                    {role.isSystem ? (
+                      <span className="badge badge-info">System</span>
+                    ) : (
+                      <span className="badge badge-secondary">Custom</span>
+                    )}
                   </td>
                   <td className="actions-cell">
-                    <button className="action-btn" title="Edit" onClick={() => handleEdit(role)}>
+                    <button className="action-btn" title="Edit">
                       <Icon name="edit" size={14} />
                     </button>
-                    <button className="action-btn" title="Delete">
-                      <Icon name="delete" size={14} />
-                    </button>
+                    {!role.isSystem && (
+                      <button
+                        className="action-btn"
+                        onClick={() => handleDelete(role.id)}
+                        title="Delete"
+                      >
+                        <Icon name="delete" size={14} />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -224,11 +211,11 @@ const RolesPermissions = () => {
         </div>
       </div>
 
-      {showModal && (
+      {showCreateModal && (
         <div className="modal-overlay">
-          <div className="modal" style={{ maxWidth: '700px' }}>
+          <div className="modal" style={{ maxWidth: '600px' }}>
             <div className="modal-header">
-              <h3 className="modal-title">{editingRole ? 'Edit Role' : 'Create New Role'}</h3>
+              <h3 className="modal-title">Create New Role</h3>
               <button className="modal-close" onClick={handleCloseModal}>
                 <Icon name="close" size={20} />
               </button>
@@ -247,6 +234,7 @@ const RolesPermissions = () => {
                     required
                   />
                 </div>
+
                 <div className="form-group">
                   <label>Description</label>
                   <textarea
@@ -255,54 +243,33 @@ const RolesPermissions = () => {
                     placeholder="Enter role description"
                     value={formData.description}
                     onChange={handleChange}
-                    rows={2}
+                    rows={3}
                   />
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="required">Status</label>
-                    <select name="status" className="form-select" value={formData.status} onChange={handleChange}>
-                      <option value="Active">Active</option>
-                      <option value="Inactive">Inactive</option>
-                    </select>
-                  </div>
                 </div>
 
                 <div className="form-group">
-                  <label className="required">Permissions</label>
-                  <div className="permission-matrix">
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                      <thead>
-                        <tr>
-                          <th style={{ textAlign: 'left', padding: '8px', borderBottom: '2px solid var(--color-border)' }}>Module</th>
-                          {permissionActions.map((action) => (
-                            <th key={action.key} style={{ padding: '8px', borderBottom: '2px solid var(--color-border)' }}>{action.label}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {permissionModules.map((module) => (
-                          <tr key={module.key}>
-                            <td style={{ padding: '8px', borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>{module.label}</td>
-                            {permissionActions.map((action) => (
-                              <td key={`${module.key}-${action.key}`} style={{ padding: '8px', borderBottom: '1px solid var(--color-border)', textAlign: 'center' }}>
-                                <input
-                                  type="checkbox"
-                                  checked={isPermissionChecked(module.key, action.key)}
-                                  onChange={() => handlePermissionToggle(module.key, action.key)}
-                                />
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <label>Permissions</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                    {allPermissions.map((permission) => (
+                      <label key={permission.id} className="form-switch" style={{ margin: 0 }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.permissions.includes(permission.id)}
+                          onChange={() => handlePermissionChange(permission.id)}
+                        />
+                        <span style={{ fontSize: '13px' }}>{permission.label}</span>
+                      </label>
+                    ))}
                   </div>
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-outline" onClick={handleCloseModal}>Cancel</button>
-                <button type="submit" className="btn btn-primary">{editingRole ? 'Update Role' : 'Create Role'}</button>
+                <button type="button" className="btn btn-outline" onClick={handleCloseModal}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  Create Role
+                </button>
               </div>
             </form>
           </div>

@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import Icon from '../components/ui/Icon';
+import { useAuth } from '../context/AuthContext';
 
-const Login = ({ onLogin }) => {
+const Login = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     rememberMe: false,
   });
   const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { login } = useAuth();
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -20,22 +23,30 @@ const Login = ({ onLogin }) => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    setErrors({});
+
     const newErrors = {};
     if (!formData.email) newErrors.email = 'Email is required';
     if (!formData.password) newErrors.password = 'Password is required';
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      setIsSubmitting(false);
       return;
     }
 
-    onLogin({
-      email: formData.email,
-      password: formData.password,
-      rememberMe: formData.rememberMe,
-    });
+    const result = await login(formData.email, formData.password, formData.rememberMe);
+
+    if (result.success) {
+      // Auth context handles state update
+    } else {
+      setErrors({ submit: result.error });
+    }
+
+    setIsSubmitting(false);
   };
 
   const handleForgot = () => {
@@ -117,6 +128,13 @@ const Login = ({ onLogin }) => {
           </div>
 
           <form className="login-form" onSubmit={handleSubmit}>
+            {errors.submit && (
+              <div className="error-banner">
+                <Icon name="error" size={16} />
+                <span>{errors.submit}</span>
+              </div>
+            )}
+
             <div className="form-group">
               <label className="required">Email / Username</label>
               <input
@@ -127,6 +145,7 @@ const Login = ({ onLogin }) => {
                 value={formData.email}
                 onChange={handleChange}
                 autoComplete="username"
+                required
               />
               {errors.email && <span className="error-text">{errors.email}</span>}
             </div>
@@ -141,6 +160,7 @@ const Login = ({ onLogin }) => {
                 value={formData.password}
                 onChange={handleChange}
                 autoComplete="current-password"
+                required
               />
               {errors.password && <span className="error-text">{errors.password}</span>}
             </div>
@@ -160,8 +180,12 @@ const Login = ({ onLogin }) => {
               </button>
             </div>
 
-            <button type="submit" className="btn btn-primary btn-lg btn-block btn-login">
-              Login
+            <button
+              type="submit"
+              className="btn btn-primary btn-lg btn-block btn-login"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Signing in...' : 'Login'}
             </button>
 
             <div className="login-footer">

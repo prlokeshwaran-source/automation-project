@@ -1,66 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from '../components/ui/Icon';
+import { documentService } from '../services/api';
 
 const DocumentsVerification = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const [documents, setDocuments] = useState([
-    {
-      id: 1,
-      organization: 'Acme Corp',
-      documentType: 'Business License',
-      documentNumber: 'BL-12345',
-      uploadedDate: '2025-06-10',
-      status: 'Approved',
-      remarks: 'All documents verified',
-      documentFile: 'business_license.pdf',
-    },
-    {
-      id: 2,
-      organization: 'Beta Ltd',
-      documentType: 'Tax Registration',
-      documentNumber: 'TR-67890',
-      uploadedDate: '2025-06-08',
-      status: 'Pending',
-      remarks: 'Awaiting verification',
-      documentFile: 'tax_registration.pdf',
-    },
-    {
-      id: 3,
-      organization: 'Gamma Inc',
-      documentType: 'ID Proof',
-      documentNumber: 'ID-98765',
-      uploadedDate: '2025-06-05',
-      status: 'Rejected',
-      remarks: 'Document is blurry, please re-upload',
-      documentFile: 'id_proof.jpg',
-    },
-    {
-      id: 4,
-      organization: 'Delta Corp',
-      documentType: 'Address Proof',
-      documentNumber: 'AP-45678',
-      uploadedDate: '2025-06-01',
-      status: 'Re-upload Requested',
-      remarks: 'Please provide a clearer document',
-      documentFile: 'address_proof.pdf',
-    },
-    {
-      id: 5,
-      organization: 'Epsilon LLC',
-      documentType: 'Business License',
-      documentNumber: 'BL-11111',
-      uploadedDate: '2025-05-28',
-      status: 'Approved',
-      remarks: 'Verified successfully',
-      documentFile: 'business_license.pdf',
-    },
-  ]);
+  useEffect(() => {
+    const fetchDocuments = async () => {
+      try {
+        const response = await documentService.getDocuments();
+        const docsData = (response.data?.data || []).map((doc) => ({
+          id: doc._id,
+          organization: doc.organization?.name || 'No Organization',
+          documentType: doc.documentType,
+          documentNumber: doc.documentNumber || 'N/A',
+          uploadedDate: new Date(doc.createdAt).toISOString().split('T')[0],
+          status: doc.status,
+          remarks: doc.verificationNotes || '',
+          userId: doc.user?._id,
+          userName: doc.user ? `${doc.user.firstName} ${doc.user.lastName}` : 'Unknown',
+        }));
+        setDocuments(docsData);
+      } catch (err) {
+        setError(err.message || 'Failed to load documents');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const documentTypes = ['Business License', 'Tax Registration', 'ID Proof', 'Address Proof', 'Bank Statement', 'Other'];
-  const statusOptions = ['Approved', 'Pending', 'Rejected', 'Re-upload Requested'];
+    fetchDocuments();
+  }, []);
+
+  const documentTypes = ['identity', 'business_license', 'tax_document', 'other'];
+  const statusOptions = ['pending', 'review', 'approved', 'rejected'];
 
   const filteredDocs = documents.filter((doc) => {
     const matchesSearch =
@@ -72,50 +49,71 @@ const DocumentsVerification = () => {
     return matchesSearch && matchesType && matchesStatus;
   });
 
-  const handleStatusUpdate = (docId, newStatus) => {
-    const updated = documents.map((doc) =>
-      doc.id === docId ? { ...doc, status: newStatus } : doc
-    );
-    setDocuments(updated);
-  };
+  const handleStatusUpdate = async (docId, newStatus) => {
+    try {
+      if (newStatus === 'approved') {
+        await documentService.approveDocument(docId);
+      } else if (newStatus === 'rejected') {
+        const notes = prompt('Enter verification notes:');
+        if (notes !== null) {
+          await documentService.rejectDocument(docId, notes);
+        }
+      } else {
+        await documentService.updateDocument(docId, { status: newStatus });
+      }
 
-  const handleAction = (action, doc) => {
-    if (action === 'approve') {
-      handleStatusUpdate(doc.id, 'Approved');
-      alert(`Document approved: ${doc.organization}`);
-    } else if (action === 'reject') {
-      handleStatusUpdate(doc.id, 'Rejected');
-      alert(`Document rejected: ${doc.organization}`);
-    } else if (action === 'request') {
-      handleStatusUpdate(doc.id, 'Re-upload Requested');
-      alert(`Re-upload requested for: ${doc.organization}`);
+      setDocuments(documents.map(doc =>
+        doc.id === docId ? { ...doc, status: newStatus } : doc
+      ));
+
+      alert(`Document ${newStatus} successfully`);
+    } catch (err) {
+      alert('Error updating document: ' + (err.response?.data?.error || err.message));
     }
   };
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'Approved': return 'badge-success';
-      case 'Pending': return 'badge-warning';
-      case 'Rejected': return 'badge-danger';
-      case 'Re-upload Requested': return 'badge-info';
+      case 'approved': return 'badge-success';
+      case 'pending': return 'badge-warning';
+      case 'review': return 'badge-info';
+      case 'rejected': return 'badge-danger';
       default: return 'badge-secondary';
     }
   };
+
+  if (loading) {
+    return (
+      <div className="content">
+        <div className="loading-state">
+          <Icon name="loading" size={48} />
+          <p>Loading documents...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="content">
       <div className="page-header">
         <div>
           <h1 className="page-title">Documents & Verification</h1>
-          <p className="page-subtitle">Verify organization documents</p>
+          <p className="page-subtitle">Approve and review organization documents</p>
         </div>
         <div className="page-actions">
           <button className="btn btn-outline">
-            <Icon name="upload" size={16} style={{ marginRight: '6px' }} />
-            Upload Document
+            <Icon name="export" size={16} style={{ marginRight: '6px' }} />
+            Export
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="error-banner">
+          <Icon name="error" size={16} />
+          <span>{error}</span>
+        </div>
+      )}
 
       <div className="card">
         <div className="table-actions">
@@ -128,16 +126,18 @@ const DocumentsVerification = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <select className="form-select" value={filterType} onChange={(e) => setFilterType(e.target.value)} style={{ width: '160px' }}>
-              <option value="all">All Types</option>
-              {documentTypes.map((type) => <option key={type} value={type}>{type}</option>)}
-            </select>
-            <select className="form-select" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ width: '140px' }}>
-              <option value="all">All Status</option>
-              {statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
-            </select>
-          </div>
+          <select className="form-select" value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+            <option value="all">All Types</option>
+            {documentTypes.map((type) => (
+              <option key={type} value={type}>{type}</option>
+            ))}
+          </select>
+          <select className="form-select" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ width: '160px' }}>
+            <option value="all">All Statuses</option>
+            {statusOptions.map((status) => (
+              <option key={status} value={status}>{status}</option>
+            ))}
+          </select>
         </div>
 
         <div className="table-container">
@@ -150,71 +150,66 @@ const DocumentsVerification = () => {
                 <th>Uploaded Date</th>
                 <th>Status</th>
                 <th>Remarks</th>
-                <th>Document File</th>
                 <th className="actions-cell">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredDocs.map((doc) => (
                 <tr key={doc.id}>
-                  <td><strong>{doc.organization}</strong></td>
+                  <td>{doc.organization}</td>
                   <td>{doc.documentType}</td>
-                  <td style={{ fontFamily: 'monospace' }}>{doc.documentNumber}</td>
+                  <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{doc.documentNumber}</td>
                   <td>{doc.uploadedDate}</td>
                   <td>
-                    <span className={`badge ${getStatusColor(doc.status)}`}>{doc.status}</span>
+                    <span className={`badge ${getStatusColor(doc.status)}`}>
+                      {doc.status}
+                    </span>
                   </td>
-                  <td>{doc.remarks}</td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span className="doc-icon" style={{ width: '24px', height: '24px', borderRadius: '4px', background: 'var(--color-primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>
-                        <Icon name="file" size={14} />
-                      </span>
-                      <a href={doc.documentFile} style={{ color: 'var(--color-primary)', fontSize: '12px' }}>{doc.documentFile}</a>
-                    </div>
-                  </td>
+                  <td>{doc.remarks || '-'}</td>
                   <td className="actions-cell">
-                    {doc.status === 'Pending' && (
+                    {doc.status === 'pending' && (
                       <>
-                        <button className="action-btn" title="Approve" onClick={() => handleAction('approve', doc)}>
-                          <Icon name="approve" size={14} />
+                        <button
+                          className="action-btn"
+                          onClick={() => handleStatusUpdate(doc.id, 'review')}
+                          title="Mark as Review"
+                        >
+                          <Icon name="eye" size={14} />
                         </button>
-                        <button className="action-btn" title="Reject" onClick={() => handleAction('reject', doc)}>
-                          <Icon name="reject" size={14} />
+                        <button
+                          className="action-btn"
+                          onClick={() => handleStatusUpdate(doc.id, 'approved')}
+                          title="Approve"
+                        >
+                          <Icon name="check" size={14} />
                         </button>
-                        <button className="action-btn" title="Request Re-upload" onClick={() => handleAction('request', doc)}>
-                          <Icon name="request" size={14} />
+                        <button
+                          className="action-btn"
+                          onClick={() => handleStatusUpdate(doc.id, 'rejected')}
+                          title="Reject"
+                        >
+                          <Icon name="close" size={14} />
                         </button>
                       </>
                     )}
-                    {doc.status === 'Re-upload Requested' && (
+                    {doc.status === 'review' && (
                       <>
-                        <button className="action-btn" title="View" style={{ color: 'var(--color-info)' }}>
-                          <Icon name="view" size={14} />
+                        <button
+                          className="action-btn"
+                          onClick={() => handleStatusUpdate(doc.id, 'approved')}
+                          title="Approve"
+                        >
+                          <Icon name="check" size={14} />
                         </button>
-                        <button className="action-btn" title="Approve" onClick={() => handleAction('approve', doc)}>
-                          <Icon name="approve" size={14} />
+                        <button
+                          className="action-btn"
+                          onClick={() => handleStatusUpdate(doc.id, 'rejected')}
+                          title="Reject"
+                        >
+                          <Icon name="close" size={14} />
                         </button>
                       </>
                     )}
-                    {doc.status === 'Approved' && (
-                      <button className="action-btn" title="View">
-                        <Icon name="view" size={14} />
-                      </button>
-                    )}
-                    {doc.status === 'Rejected' && (
-                      <>
-                        <button className="action-btn" title="View">
-                          <Icon name="view" size={14} />
-                        </button>
-                        <button className="action-btn" title="Approve" onClick={() => handleAction('approve', doc)}>
-                          <Icon name="approve" size={14} />
-                        </button>
-                      </>
-                    )}
-                    <button className="action-btn" title="Download">
-                      <Icon name="download" size={14} />
-                    </button>
                   </td>
                 </tr>
               ))}
